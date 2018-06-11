@@ -40,17 +40,42 @@ function parseData(res) {
       //do something wiht csvData
       console.log("done");
       console.log(priceData);
-      //priceData = testData;
+     
+      /*
       let stockRsiResult = stockRsi.calculate({
-        period: 14,
+        rsiPeriod: 14,
+        stochasticPeriod: 14,
+        kPeriod: 3,
+        dPeriod: 3,
         values:priceData});
         priceData=[];
+        */
+
+        let stockRsiResult = stockRsi.calculate({
+            period: 14,
+            values:priceData});
+            priceData=[];
 
         let sendRsiData = [];
       let z = 0;
-      for (;z < stockRsiResult.length; z++) {
-        console.log(csvData[z+14][0]);
-        sendRsiData.push([csvData[z+14][0],stockRsiResult[z]]);
+      for (;z < stockRsiResult.length ; z++) {
+        //console.log(stockRsiResult[z]);
+       
+        if (z > 14) {
+            let last14 = stockRsiResult.slice(z-14,z);
+           // console.log(last14);
+      
+            let max = Math.max.apply(null, last14);
+            let min = Math.min.apply(null, last14);
+           // console.log(min);
+           // console.log(max);
+           // console.log(last14[last14.length-1]);
+           // console.log(stockRsiResult[z-1]);
+            let stochRSI = (last14[last14.length-1] - min) / (max - min);
+           // console.log(stochRSI);
+            sendRsiData.push([csvData[z+13][0],stochRSI]);
+        }
+       
       }
       
 
