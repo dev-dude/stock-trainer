@@ -75,7 +75,11 @@ function parseData(res) {
             let stochRSI = (last14[last14.length-1] - min) / (max - min);
             //console.log(stochRSI.toFixed(2));
             stockRSIValues.push(stochRSI.toFixed(2));
-            sendRsiData.push([csvData[z+13][0],stochRSI]);
+
+
+            let roundNumber = Math.round(stochRSI * 10) / 10;
+            //console.log(roundNumber);
+            sendRsiData.push([csvData[z+13][0],roundNumber]);
         }
        
       }
@@ -104,13 +108,15 @@ function addData(data,res) {
             dataRow = csvAllRows[i];
         }
         if (stockRSIValues[i]) {
-            csvAllRows[i][7] = parseFloat(stockRSIValues[i]);
+            let roundNumber = Math.round(stockRSIValues[i] * 10) / 10;
+            csvAllRows[i][7] = parseFloat(roundNumber);
         }
     }
    let convertedRows = "";
    let x = 0;
    for (; x < csvAllRows.length; x++) {
-    convertedRows += csvAllRows[x].join(",") + "\n";
+
+    convertedRows += csvAllRows[x][7] + "," + csvAllRows[x][8] + "\n";
    }
 
     if (convertedRows.length > 0) {
