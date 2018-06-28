@@ -74,7 +74,7 @@
                         events: {
                             click: function () {
                                 let timestamp = moment.unix(this.category/1000);
-                                let backObj = {value:this.y,time:timestamp.format("M/D/Y")};
+                                let backObj = {value:this.y,time:timestamp.format("Y-MM-DD")};
                                 $.post('http://localhost:3000/save', backObj, function(response) {
                                     let responseCopy = Object.assign({}, response);
                                     console.log(responseCopy);
@@ -82,7 +82,7 @@
                                     let items = "";
                                     let i = 0;
                                     for (;i < allSaves.length; i++) {
-                                        console.log(allSaves[i].timestamp);
+                                        console.log(allSaves[i][0]);
                                         let val = parseFloat(allSaves[i].value);
                                         let lastClick =  allSaves[i].isBuy ? "buy" : "sell";
                                         items +=  allSaves[i].data[0] + "-" + parseFloat(allSaves[i].data[4]).toFixed(2) + "- Last Click - " + lastClick + "<br>";
