@@ -8,6 +8,8 @@ const bodyParser = require('body-parser');
 const stockRsi = require('technicalindicators').RSI;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static('public'))
+
 
 
 
@@ -138,17 +140,18 @@ function addData(data,res) {
             csvAllRows[i][8] = "Multi Day Gains";
             csvAllRows[i][9] = "SMA Gains";
             csvAllRows[i][10] = "Stoch RSI";
-            csvAllRows[i][11] = "Buy";
+            csvAllRows[i][11] = "Single Day Volume";
+            csvAllRows[i][12] = "Buy";
             continue;
         }
 
         if (csvAllRows[i][0] === data.time) {
             console.log("isBuy:" + isBuy);
             if (isBuy) {
-                csvAllRows[i][11] = 1;
+                csvAllRows[i][12] = 1;
                 isBuy = false;
             } else {
-                csvAllRows[i][11] = -1;
+                csvAllRows[i][12] = -1;
                 isBuy = true;
             }
             dataRow = csvAllRows[i];
@@ -157,13 +160,16 @@ function addData(data,res) {
             csvAllRows[i][8] = "";
             csvAllRows[i][9] = "";
             csvAllRows[i][10] = "";
-            csvAllRows[i][11] = "0";
+            csvAllRows[i][11] = "";
+            csvAllRows[i][12] = "0";
         }
 
         let calcMovingAverage = [];
         if (i > 1) {
+            let singleDayVolume = ((csvAllRows[i][6] - csvAllRows[i-1][6]) / csvAllRows[i-1][6]);
             let singleDayGains = ((csvAllRows[i][5] - csvAllRows[i-1][5]) / csvAllRows[i-1][5]);
             csvAllRows[i][7] = singleDayGains.toFixed(3); 
+            csvAllRows[i][11] = singleDayVolume.toFixed(3)
             if (i > 2) {
                 let multiDayGains = ((csvAllRows[i][5] - csvAllRows[i-2][5]) / csvAllRows[i-2][5]);
                 csvAllRows[i][8] = multiDayGains.toFixed(3);
@@ -184,7 +190,7 @@ function addData(data,res) {
    for (; x < csvAllRows.length; x++) {
 
     convertedRows += csvAllRows[x][0] + "," +  csvAllRows[x][7] + "," + csvAllRows[x][8] + "," + csvAllRows[x][9] +
-     "," + csvAllRows[x][10] + "," + csvAllRows[x][11] + "\n";
+     "," + csvAllRows[x][10] + "," + csvAllRows[x][11] + "," + csvAllRows[x][12] + "\n";
    }
 
     if (convertedRows.length > 0) {
