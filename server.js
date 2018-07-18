@@ -102,16 +102,17 @@ function parseData(res) {
 }
 
 function downloadCsv(response) {
+    console.log("download csv");
     let dest = process.cwd() + "\\test.csv";
     request.get({
         headers: {
           'Cookie': 'B=b9ihaitdim360&b=3&s=8m'
         },
-        uri: 'http://query1.finance.yahoo.com/v7/finance/download/SPY?period1=946699258&period2=9529548208&interval=1d&events=history&crumb=HbK4LWmmHjG',
+        uri: 'http://query1.finance.yahoo.com/v7/finance/download/SPY?period1=946699258&period2=9929548208&interval=1d&events=history&crumb=HbK4LWmmHjG',
         method: 'GET'
       }, function(err, res, body) {     
         console.log(err);
-        //console.log(body);
+        console.log(dest);
         fs.writeFile(dest, body, function(err) {
             if(err) {
                 return console.log(err);
@@ -221,6 +222,7 @@ app.get('/', function(req, res) {
         stockRSIValues = [];
         intialRun = true;
         firstRunData = {};
+        console.log("start");
         downloadCsv(res);
    // }
 });
@@ -229,4 +231,4 @@ app.post('/save', function(req, res) {
 });
 
 
-app.listen(3000, () => console.log('Example app listening on port 3000!'))
+app.listen(3000, () => console.log('Example app listening on port 3000 t!'))
