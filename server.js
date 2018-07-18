@@ -194,7 +194,7 @@ function addData(data,res) {
    }
 
     if (convertedRows.length > 0) {
-        fs.writeFile('testout.csv', convertedRows, 'utf8', function (err) {
+        fs.writeFile('public/testout.csv', convertedRows, 'utf8', function (err) {
             if (err) {
             console.log(err);
             console.log('Some error occured - file either not saved or corrupted file saved.');
@@ -211,11 +211,18 @@ function addData(data,res) {
 
 
 app.get('/', function(req, res) {
-    if (firstRunData.csvData) {
-        res.send(firstRunData);
-    } else {
+    // if (firstRunData.csvData) {
+    //   res.send(firstRunData);
+    //} else {
+        csvData=[];
+        priceData=[];
+        count = 0;
+        csvAllRows = [];
+        stockRSIValues = [];
+        intialRun = true;
+        firstRunData = {};
         downloadCsv(res);
-    }
+   // }
 });
 app.post('/save', function(req, res) {
     addData(req.body,res);
