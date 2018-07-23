@@ -103,7 +103,7 @@ function parseData(res) {
 
 function downloadCsv(response) {
     console.log("download csv");
-    let dest = process.cwd() + "\\test.csv";
+    let dest = process.cwd() + "\/test.csv";
     request.get({
         headers: {
           'Cookie': 'B=b9ihaitdim360&b=3&s=8m'
@@ -231,4 +231,4 @@ app.post('/save', function(req, res) {
 });
 
 
-app.listen(3000, () => console.log('Example app listening on port 3000 t!'))
+app.listen(8080, () => console.log('Example app listening on port 3000 t!'))
