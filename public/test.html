@@ -75,7 +75,7 @@
                             click: function () {
                                 let timestamp = moment.unix(this.category/1000);
                                 let backObj = {value:this.y,time:timestamp.format("Y-MM-DD")};
-                                $.post('http://localhost:3000/save', backObj, function(response) {
+                                $.post('http://54.198.14.12:8080/save', backObj, function(response) {
                                     let responseCopy = Object.assign({}, response);
                                     console.log(responseCopy);
                                     allSaves.unshift(responseCopy);     
