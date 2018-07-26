@@ -11,16 +11,23 @@
 
   
   <div id="container" style="height: 400px; min-width: 310px"></div>
-    <!-- TODO: Missing CoffeeScript 2 -->
+  <div id="lastRow"></div>
+  <div id="predictions"></div>
   <div id="allSaves"></div>
     <script type="text/javascript">
   
   
-      
-  
   let csvData;
   let allSaves = [];
-  $.getJSON('http://54.198.14.12:3000/', function (data) {
+  let url = new URL(window.location.href);
+  let isLocal = url.searchParams.get("isLocal");
+  let server = "http://54.198.14.12:8080";
+  if (isLocal) {
+      server = "http://localhost:8080";
+  }
+
+
+  $.getJSON(server, function (data) {
 
 
       csvData = data;
@@ -75,7 +82,7 @@
                             click: function () {
                                 let timestamp = moment.unix(this.category/1000);
                                 let backObj = {value:this.y,time:timestamp.format("Y-MM-DD")};
-                                $.post('http://localhost:3000/save', backObj, function(response) {
+                                $.post(server + '/save', backObj, function(response) {
                                     let responseCopy = Object.assign({}, response);
                                     console.log(responseCopy);
                                     allSaves.unshift(responseCopy);     
@@ -88,6 +95,8 @@
                                         items +=  allSaves[i].data[0] + "-" + parseFloat(allSaves[i].data[4]).toFixed(2) + "- Last Click - " + lastClick + "<br>";
                                     }
                                     $("#allSaves").html(items);
+                                    $('#predictions').html("<pre>"+JSON.stringify(responseCopy.predictions)+"</pre>");
+                                    $('#lastRow').html("<pre>"+JSON.stringify(responseCopy.lastRow)+"</pre>");
                                 }, 'json');
                             }
                         }
