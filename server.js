@@ -38,6 +38,9 @@ let totalPredictions = [];
 let mlPredictCounter = 0;
 let buyData = [];
 let buyDataAndDateOnly = [];
+let backTestData = [];
+let backTestCorrect = 0;
+let backTestNonCorrect = 0;
 
 function parseBuyAndSellData(res) {
     buyData = [];
@@ -46,7 +49,6 @@ function parseBuyAndSellData(res) {
     fs.createReadStream("./buyData.csv")
     .pipe(parse({delimiter: ','}))
     .on('data', function(csvrow) {
-        let buyData = [];
         buyData.push(csvrow);
         let timeStamp = moment(csvrow[0]).utc().unix();
         if (count > 0) {
@@ -63,14 +65,12 @@ function parseData(res) {
     fs.createReadStream("./test.csv")
     .pipe(parse({delimiter: ','}))
     .on('data', function(csvrow) {
-        //console.log(csvrow[4]);
-        //console.log(csvrow[0])
-        //do something with csvrow
         
         if (intialRun) {
             csvAllRows.push(csvrow);
         }
         let timeStamp = moment(csvrow[0]).utc().unix();
+        let formattedTimeStamp = moment(parseInt(timeStamp.toString()+"000")).format("D/M/Y");
         let csvObj = [timeStamp*1000,parseFloat(csvrow[4]),count];
         if (count > 0) {
             csvData.push(csvObj);       
@@ -79,19 +79,9 @@ function parseData(res) {
         count++;
     })
     .on('end',function() {
-      //do something wiht csvData
-      console.log("done");
-      //console.log(priceData);
-     
-      /*
-      let stockRsiResult = stockRsi.calculate({
-        rsiPeriod: 14,
-        stochasticPeriod: 14,
-        kPeriod: 3,
-        dPeriod: 3,
-        values:priceData});
-        priceData=[];
-        */
+    
+        console.log("done");
+
         stockRSIValues = [];
         console.log(priceData.length);
         let stockRsiResult = stockRsi.calculate({
@@ -101,29 +91,18 @@ function parseData(res) {
 
         let sendRsiData = [];
        let z = 0;
-       //console.log(stockRsiResult);
+    
        console.log(stockRsiResult.length);
       
-       for (;z < stockRsiResult.length ; z++) {
-        //console.log(stockRsiResult[z]);
-       
+       for (;z < stockRsiResult.length ; z++) {       
         if (z > 13) {
             let last14 = stockRsiResult.slice(z-14,z);
-            //console.log(last14);
       
             let max = Math.max.apply(null, last14);
             let min = Math.min.apply(null, last14);
-            //console.log(min);
-            //console.log(max);
-           // console.log(last14[last14.length-1]);
-           // console.log(stockRsiResult[z-1]);
             let stochRSI = (last14[last14.length-1] - min) / (max - min);
-            //console.log(stochRSI.toFixed(2));
             stockRSIValues.push(stochRSI.toFixed(2));
-
-          
             let roundNumber = Math.round(stochRSI * 10) / 10;
-            //console.log(roundNumber);
             sendRsiData.push([csvData[z+14][0],roundNumber]);
         }
        
@@ -232,7 +211,7 @@ function addData(data,res) {
    let p = new Promise(function(resolve, reject) {
        mlPredictCounter = 0;
        totalPredictions = [];
-       mlPredict(resolve,dataRow);
+       mlPredict(resolve,dataRow,false);
    });
 
     p.then(function(data){
@@ -253,25 +232,89 @@ function addData(data,res) {
     });
 }
 
-function mlPredict(resolve,lastRow) {
-    if (mlPredictCounter < models.length) {
+function backTest(res) {
+    let u = 0;
+    let testMode = true;
+    backTestCorrect = 0;
+    backTestNonCorrect = 0;
+    let testCount = 0;
+    backTestData = [];
+    for (; u < buyData.length;u++) {
+        if (buyData[u][6] == "-1" || buyData[u][6] == "1") {
+            if (testMode && backTestData.length > 20) {
+                break;
+            }
+            testCount++;
+            let predictAccuracyObj = {decision:0,dataOneDayBackData:{},mlPredict:{},correct:null};
+            predictAccuracyObj.decision = buyData[u][6];
+            predictAccuracyObj.dataOneDayBackData = buyData[u-1];
+            backTestData.push(predictAccuracyObj);
+        }
+    }
+    console.log("total test rows " + testCount);
+    console.log("starting model verification");
+
+    let p = new Promise(function(resolve, reject) {
+        mlPredictCounter = 0;
+        mlPredict(resolve,null,true);
+    });
+    p.then(function(){
+        console.log("backTest Correct" + backTestCorrect);
+        console.log("backTest False " + backTestNonCorrect);
+        console.log("percentage correct " + backTestCorrect/backTestData.length);
+        console.log("percentage notcorrect " + backTestNonCorrect/backTestData.length);
+        res.send({"status":"success"});
+    });
+}
+
+function mlPredict(resolve,lastRow,backTest) {
+    if (
+        !backTest && mlPredictCounter < models.length || 
+        backTest && mlPredictCounter < backTestData.length
+    ) {
+
+        let activeModel;
+        let gains;
+        let multiDayGains;
+        let smaGains;
+        let stochRsi;
+        let volume;
+        if (backTest) {
+            activeModel = models[0];
+            lastRow = backTestData[mlPredictCounter].dataOneDayBackData;
+            gains = lastRow[1].toString();
+            multiDayGains = lastRow[2].toString();
+            smaGains = lastRow[3].toString();
+            stochRsi = lastRow[4].toString();
+            volume = lastRow[5].toString();
+        } else {
+            gains = lastRow[7].toString();
+            multiDayGains = lastRow[8].toString();
+            smaGains = lastRow[9].toString();
+            stochRsi = lastRow[10].toString();
+            volume = lastRow[11].toString();
+            activeModel = models[mlPredictCounter];
+        }
+
         let params = {
-            MLModelId: models[mlPredictCounter].model, 
+            MLModelId: activeModel.model, 
             PredictEndpoint: 'https://realtime.machinelearning.us-east-1.amazonaws.com',
             Record: {
-                "Gains": lastRow[7].toString(),
-                "Multi Day Gains": lastRow[8].toString(),
-                "SMA Gains": lastRow[9].toString(),
-                "Stoch RSI": lastRow[10].toString(),
-                "Single Day Volume": lastRow[11].toString()
+                "Gains": gains,
+                "Multi Day Gains": multiDayGains,
+                "SMA Gains": smaGains,
+                "Stoch RSI": stochRsi,
+                "Single Day Volume": volume
             }
         };
-        console.log(params);
+
+        //console.log(params);
+
         ml.predict(params, function(err, data) {
             if (err) {
                 console.log(err, err.stack);
             } else {     
-                console.log(data);
+                //console.log(data);
                 let obj = {};
 
         
@@ -280,10 +323,26 @@ function mlPredict(resolve,lastRow) {
                     obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(2);
                 }
                 obj.hold = data["Prediction"]["predictedScores"][0].toFixed(2);
-                obj.type =  models[mlPredictCounter].type;
+                obj.type = activeModel.type;
                 totalPredictions.push(obj);
+             
+                if (backTest) {
+                    let mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
+                    if (mlBuy && backTestData[mlPredictCounter].decision == "1") {
+                        backTestData[mlPredictCounter].correct = true;
+                        backTestCorrect++;
+                    } else if (!mlBuy && backTestData[mlPredictCounter].decision == "-1") {
+                        backTestData[mlPredictCounter].correct = true;
+                        backTestCorrect++;
+                    } else {
+                        backTestNonCorrect++;
+                        backTestData[mlPredictCounter].correct = false;
+                    }
+                }
+
                 mlPredictCounter++;
-                mlPredict(resolve,lastRow);
+
+                mlPredict(resolve,lastRow,backTest);
             }
         });
     } else {
@@ -291,25 +350,23 @@ function mlPredict(resolve,lastRow) {
     }
 }
 
-
 app.get('/', function(req, res) {
-    // if (firstRunData.csvData) {
-    //   res.send(firstRunData);
-    //} else {
-        csvData=[];
-        priceData=[];
-        count = 0;
-        csvAllRows = [];
-        stockRSIValues = [];
-        intialRun = true;
-        firstRunData = {};
-        console.log("start");
-        downloadCsv(res);
-   // }
+    csvData=[];
+    priceData=[];
+    count = 0;
+    csvAllRows = [];
+    stockRSIValues = [];
+    intialRun = true;
+    firstRunData = {};
+    console.log("start");
+    downloadCsv(res);
 });
 app.post('/save', function(req, res) {
     addData(req.body,res);
 });
 
+app.get('/backTest', function(req, res) {
+    backTest(res);
+});
 
 app.listen(8080, () => console.log('Example app listening on port 3000 t!'))
