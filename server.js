@@ -41,6 +41,8 @@ let buyDataAndDateOnly = [];
 let backTestData = [];
 let backTestCorrect = 0;
 let backTestNonCorrect = 0;
+let buyCorrectCounter = 0;
+let sellCorrectCounter = 0;
 
 function parseBuyAndSellData(res) {
     buyData = [];
@@ -237,6 +239,9 @@ function backTest(res) {
     let testMode = true;
     backTestCorrect = 0;
     backTestNonCorrect = 0;
+    buyCorrectCounter = 0;
+    sellCorrectCounter = 0;
+    
     let testCount = 0;
     backTestData = [];
     for (; u < buyData.length;u++) {
@@ -259,10 +264,15 @@ function backTest(res) {
         mlPredict(resolve,null,true);
     });
     p.then(function(){
-        console.log("backTest Correct" + backTestCorrect);
+        console.log("total record count " + testCount);
+        console.log("backTest Correct " + backTestCorrect);
         console.log("backTest False " + backTestNonCorrect);
         console.log("percentage correct " + backTestCorrect/backTestData.length);
         console.log("percentage notcorrect " + backTestNonCorrect/backTestData.length);
+        console.log("buy correct " + buyCorrectCounter);
+        console.log("sell correct " + sellCorrectCounter);
+        console.log("correct buy percentage " + buyCorrectCounter/backTestCorrect);
+        console.log("correct sell percentage " + sellCorrectCounter/backTestCorrect);
         res.send({"status":"success"});
     });
 }
@@ -331,9 +341,11 @@ function mlPredict(resolve,lastRow,backTest) {
                     if (mlBuy && backTestData[mlPredictCounter].decision == "1") {
                         backTestData[mlPredictCounter].correct = true;
                         backTestCorrect++;
+                        buyCorrectCounter++;
                     } else if (!mlBuy && backTestData[mlPredictCounter].decision == "-1") {
                         backTestData[mlPredictCounter].correct = true;
                         backTestCorrect++;
+                        sellCorrectCounter++;
                     } else {
                         backTestNonCorrect++;
                         backTestData[mlPredictCounter].correct = false;
