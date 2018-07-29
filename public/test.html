@@ -10,7 +10,7 @@
   <script src="https://momentjs.com/downloads/moment.min.js"></script>
 
   
-  <div id="container" style="height: 400px; min-width: 310px"></div>
+  <div id="container" style="height: 500px; min-width: 310px"></div>
   <div id="lastRow"></div>
   <div id="predictions"></div>
   <div id="allSaves"></div>
@@ -32,7 +32,10 @@
 
       csvData = data;
       // Create the chart
-      Highcharts.stockChart('container', {
+
+
+
+    let chart = Highcharts.stockChart('container', {
   
   
           rangeSelector: {
@@ -72,7 +75,7 @@
     ],
   
           title: {
-              text: 'test'
+              text: ''
           },
           plotOptions: {
                 series: {
@@ -81,7 +84,7 @@
                         events: {
                             click: function () {
                                 let timestamp = moment.unix(this.category/1000);
-                                let backObj = {value:this.y,time:timestamp.format("Y-MM-DD")};
+                                let backObj = {value:this.y,time:timestamp.utc().format("Y-MM-DD")};
                                 $.post(server + '/save', backObj, function(response) {
                                     let responseCopy = Object.assign({}, response);
                                     console.log(responseCopy);
@@ -94,6 +97,7 @@
                                         let lastClick =  allSaves[i].isBuy ? "buy" : "sell";
                                         items +=  allSaves[i].data[0] + "-" + parseFloat(allSaves[i].data[4]).toFixed(2) + "- Last Click - " + lastClick + "<br>";
                                     }
+
                                     $("#allSaves").html(items);
                                     $('#predictions').html("<pre>"+JSON.stringify(responseCopy.predictions)+"</pre>");
                                     $('#lastRow').html("<pre>"+JSON.stringify(responseCopy.lastRow)+"</pre>");
@@ -123,10 +127,38 @@
               }
           }]
       });
+        let z = 0;
+        for (; z < csvData.buyDataAndDateOnly.length; z++) {
+            let plotLine;
+            if (csvData.buyDataAndDateOnly[z].action == 1) {
+                plotLine = formatPlotLines("b","black",csvData.buyDataAndDateOnly[z].timeStamp);
+                chart.xAxis[0].addPlotLine(plotLine);
+            } else if (csvData.buyDataAndDateOnly[z].action == -1) {
+                plotLine = formatPlotLines("s","red",csvData.buyDataAndDateOnly[z].timeStamp);
+                chart.xAxis[0].addPlotLine(plotLine);
+            }
+            
+        }
+
   });
-  
-  
-  
+
+  function formatPlotLines(type,color,time) {
+    let plotLine = {
+    value: +time,
+        width: .5,
+        color: color,
+        dashStyle: 'dash',
+        label: {
+        text: type,
+            align: 'left',
+            y: 0,
+            x: 0
+        }
+    };
+    return plotLine;
+}
+
+ 
   
   </script>
 

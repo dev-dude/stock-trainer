@@ -1,5 +1,7 @@
 const express = require('express')
 const app = express()
+const configFile = require('./configFile.json')
+const moment = require('moment');
 
 const fs = require('fs');
 const request = require('request');
@@ -12,6 +14,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+const models = [
+    {"type":"1 day ahead no volume","model":"ml-swqlD7B0tW2"},
+    {"type":"2 days ahead no volume","model":"ml-fu7bKU8rxBI"},
+];
+AWS.config.update(configFile.awsKeys);
 
 AWS.config.update({region:'us-east-1'});
 const ml = new AWS.MachineLearning({ signatureVersion: 'v4' });
@@ -28,9 +35,31 @@ let isBuy = true;
 let testData = [45.15,46.26,46.5,46.23,46.08,46.03,46.83,47.69,47.54,49.25,49.23,48.2,47.57,47.61,48.08,47.21,46.76,46.68,46.21,47.47,47.98,47.13,46.58,46.03,46.54,46.79,45.83,45.93,45.8,46.69,47.05,47.3,48.1,47.93,47.03,47.58,47.38,48.1,48.47,47.6,47.74,48.21,48.56,48.15,47.81,47.41,45.66,45.75,45.07,43.77,43.25,44.68,45.11,45.8,45.74,46.23,46.81,46.87,46.04,44.78,44.58,44.14,45.66,45.89,46.73,46.86,46.95,46.74,46.67,45.3,45.4,45.54,44.96,44.47,44.68,45.91,46.03,45.98,46.32,46.53,46.28,46.14,45.92,44.8,44.38,43.48,44.28,44.87,44.98,43.96,43.58,42.93,42.46,42.8,43.27,43.89,45,44.03,44.37,44.71,45.38,45.54];
 let rsiTestData = [54.09,59.90,58.20,59.76,52.35,52.82,56.94,57.47,55.26,57.51,54.80,51.47,56.16,58.34,56.02,60.22,56.75,57.38,50.23,57.06,61.51,63.69,66.22,69.16,70.73,67.79,68.82,62.38,67.59,67.59];
 let totalPredictions = [];
-let = mlPredictCounter = 0;
+let mlPredictCounter = 0;
+let buyData = [];
+let buyDataAndDateOnly = [];
+
+function parseBuyAndSellData(res) {
+    buyData = [];
+    buyDataAndDateOnly = [];
+    count = 0;
+    fs.createReadStream("./buyData.csv")
+    .pipe(parse({delimiter: ','}))
+    .on('data', function(csvrow) {
+        let buyData = [];
+        buyData.push(csvrow);
+        let timeStamp = moment(csvrow[0]).utc().unix();
+        if (count > 0) {
+            buyDataAndDateOnly.push({"timeStamp":timeStamp * 1000,"action":csvrow[6]});
+        }
+        count++;
+    }).on('end',function() {
+        parseData(res);
+    });
+}
 
 function parseData(res) {
+    count = 0;
     fs.createReadStream("./test.csv")
     .pipe(parse({delimiter: ','}))
     .on('data', function(csvrow) {
@@ -41,8 +70,8 @@ function parseData(res) {
         if (intialRun) {
             csvAllRows.push(csvrow);
         }
-        let timeStamp = new Date(csvrow[0]).getTime();
-        let csvObj = [timeStamp,parseFloat(csvrow[4]),count];
+        let timeStamp = moment(csvrow[0]).utc().unix();
+        let csvObj = [timeStamp*1000,parseFloat(csvrow[4]),count];
         if (count > 0) {
             csvData.push(csvObj);       
             priceData.push(parseFloat(csvrow[4]));
@@ -101,7 +130,7 @@ function parseData(res) {
       }
 
       intialRun = false;
-      firstRunData = {csvData:csvData,rsiData:sendRsiData};
+      firstRunData = {csvData:csvData,rsiData:sendRsiData,buyDataAndDateOnly:buyDataAndDateOnly};
       res.send(firstRunData);
     });
 }
@@ -124,7 +153,7 @@ function downloadCsv(response) {
             }
             //console.log(res);
             console.log("The file was saved!");
-            parseData(response);
+            parseBuyAndSellData(response);
         }); 
     });
 }
@@ -203,7 +232,7 @@ function addData(data,res) {
    let p = new Promise(function(resolve, reject) {
        mlPredictCounter = 0;
        totalPredictions = [];
-       mlPredict(resolve,lastRow);
+       mlPredict(resolve,dataRow);
    });
 
     p.then(function(data){
@@ -212,14 +241,14 @@ function addData(data,res) {
                 if (err) {
                 console.log(err);
                 console.log('Some error occured - file either not saved or corrupted file saved.');
-                res.send({msg:"error","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":lastRow});
+                res.send({msg:"error","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow});
                 } else{
                 console.log('It\'s saved!');
-                res.send({msg:"saved","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":lastRow});
+                res.send({msg:"saved","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow});
                 }
             });
         } else {
-            res.send({msg:"error","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":lastRow});
+            res.send({msg:"error","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow});
         }
     });
 }
@@ -237,14 +266,19 @@ function mlPredict(resolve,lastRow) {
                 "Single Day Volume": lastRow[11].toString()
             }
         };
+        console.log(params);
         ml.predict(params, function(err, data) {
             if (err) {
                 console.log(err, err.stack);
             } else {     
                 console.log(data);
                 let obj = {};
+
+        
                 obj.buy = data["Prediction"]["predictedScores"][1].toFixed(2);
-                obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(2);
+                if (data["Prediction"]["predictedScores"][-1]) {
+                    obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(2);
+                }
                 obj.hold = data["Prediction"]["predictedScores"][0].toFixed(2);
                 obj.type =  models[mlPredictCounter].type;
                 totalPredictions.push(obj);
