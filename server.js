@@ -28,6 +28,7 @@ let csvData=[];
 let priceData=[];
 let count = 0;
 let csvAllRows = [];
+let csvRowsCopySimulation = [];
 let stockRSIValues = [];
 let intialRun = true;
 let firstRunData = {};
@@ -43,6 +44,9 @@ let backTestCorrect = 0;
 let backTestNonCorrect = 0;
 let buyCorrectCounter = 0;
 let sellCorrectCounter = 0;
+let testPortfolio = 10000;
+let csvDataMap = {};
+let lastActiveTrade = "-1";
 
 function parseBuyAndSellData(res) {
     buyData = [];
@@ -72,9 +76,10 @@ function parseData(res) {
             csvAllRows.push(csvrow);
         }
         let timeStamp = moment(csvrow[0]).utc().unix();
-        let formattedTimeStamp = moment(parseInt(timeStamp.toString()+"000")).format("D/M/Y");
+        let formattedTimeStamp = moment(parseInt(timeStamp.toString()+"000")).format("M/D/Y");
         let csvObj = [timeStamp*1000,parseFloat(csvrow[4]),count];
         if (count > 0) {
+            csvDataMap[formattedTimeStamp] = csvrow;
             csvData.push(csvObj);       
             priceData.push(parseFloat(csvrow[4]));
         }
@@ -213,7 +218,7 @@ function addData(data,res) {
    let p = new Promise(function(resolve, reject) {
        mlPredictCounter = 0;
        totalPredictions = [];
-       mlPredict(resolve,dataRow,false);
+       mlPredict(resolve,dataRow,false,false);
    });
 
     p.then(function(data){
@@ -234,6 +239,24 @@ function addData(data,res) {
     });
 }
 
+function portfolioSimulation(res) {
+    let test = true;
+    if (test) {
+        csvRowsCopySimulation = csvAllRows.slice(15,500);
+    } else {
+        csvRowsCopySimulation = csvAllRows.slice(15,csvAllRows.length - 1);
+    }
+    let p = new Promise(function(resolve, reject) {
+        mlPredictCounter = 0;
+        totalPredictions = [];
+        mlPredict(resolve,null,false,true);
+    });
+    p.then(function(){
+        console.log("testPortfolio " + testPortfolio);
+        res.send({"status":"success"});
+    });
+}
+
 function backTest(res) {
     let u = 0;
     let testMode = true;
@@ -241,18 +264,20 @@ function backTest(res) {
     backTestNonCorrect = 0;
     buyCorrectCounter = 0;
     sellCorrectCounter = 0;
+    testPortfolio = 0;
     
     let testCount = 0;
     backTestData = [];
     for (; u < buyData.length;u++) {
         if (buyData[u][6] == "-1" || buyData[u][6] == "1") {
-            if (testMode && backTestData.length > 20) {
+            if (testMode && backTestData.length > 10) {
                 break;
             }
             testCount++;
-            let predictAccuracyObj = {decision:0,dataOneDayBackData:{},mlPredict:{},correct:null};
+            let predictAccuracyObj = {decision:0,dataOneDayBackData:{},dataCurrentData:{},mlPredict:{},correct:null};
             predictAccuracyObj.decision = buyData[u][6];
             predictAccuracyObj.dataOneDayBackData = buyData[u-1];
+            predictAccuracyObj.dataCurrentData = buyData[u];
             backTestData.push(predictAccuracyObj);
         }
     }
@@ -261,7 +286,7 @@ function backTest(res) {
 
     let p = new Promise(function(resolve, reject) {
         mlPredictCounter = 0;
-        mlPredict(resolve,null,true);
+        mlPredict(resolve,null,true,false);
     });
     p.then(function(){
         console.log("total record count " + testCount);
@@ -273,14 +298,16 @@ function backTest(res) {
         console.log("sell correct " + sellCorrectCounter);
         console.log("correct buy percentage " + buyCorrectCounter/backTestCorrect);
         console.log("correct sell percentage " + sellCorrectCounter/backTestCorrect);
+        console.log("testPortfolio " + testPortfolio);
         res.send({"status":"success"});
     });
 }
 
-function mlPredict(resolve,lastRow,backTest) {
+function mlPredict(resolve,lastRow,backTest,activeTrade) {
     if (
         !backTest && mlPredictCounter < models.length || 
-        backTest && mlPredictCounter < backTestData.length
+        backTest && mlPredictCounter < backTestData.length ||
+        activeTrade && mlPredictCounter < csvRowsCopySimulation.length - 1
     ) {
 
         let activeModel;
@@ -289,6 +316,12 @@ function mlPredict(resolve,lastRow,backTest) {
         let smaGains;
         let stochRsi;
         let volume;
+
+      
+        if (activeTrade) {
+            lastRow = csvRowsCopySimulation[mlPredictCounter];
+        }
+
         if (backTest) {
             activeModel = models[0];
             lastRow = backTestData[mlPredictCounter].dataOneDayBackData;
@@ -304,7 +337,12 @@ function mlPredict(resolve,lastRow,backTest) {
             stochRsi = lastRow[10].toString();
             volume = lastRow[11].toString();
             activeModel = models[mlPredictCounter];
+            if (activeTrade) {
+                activeModel = models[0];
+            }
         }
+
+      
 
         let params = {
             MLModelId: activeModel.model, 
@@ -335,14 +373,16 @@ function mlPredict(resolve,lastRow,backTest) {
                 obj.hold = data["Prediction"]["predictedScores"][0].toFixed(2);
                 obj.type = activeModel.type;
                 totalPredictions.push(obj);
-             
+                let mlBuy;
                 if (backTest) {
-                    let mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
+                    mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
                     if (mlBuy && backTestData[mlPredictCounter].decision == "1") {
                         backTestData[mlPredictCounter].correct = true;
                         backTestCorrect++;
                         buyCorrectCounter++;
+
                     } else if (!mlBuy && backTestData[mlPredictCounter].decision == "-1") {
+
                         backTestData[mlPredictCounter].correct = true;
                         backTestCorrect++;
                         sellCorrectCounter++;
@@ -350,11 +390,25 @@ function mlPredict(resolve,lastRow,backTest) {
                         backTestNonCorrect++;
                         backTestData[mlPredictCounter].correct = false;
                     }
+
+                }
+
+                if (activeTrade) {
+                    let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
+                    mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
+                    let totalValuePurchased = parseFloat(priceData[4] * 5);
+                    if (mlBuy && lastActiveTrade == "-1") {
+                        lastActiveTrade = "1";
+                        testPortfolio = testPortfolio - totalValuePurchased;
+                    } else if (!mlBuy && lastActiveTrade == "1") {
+                        lastActiveTrade = "-1";
+                        testPortfolio = testPortfolio + totalValuePurchased;
+                    }
                 }
 
                 mlPredictCounter++;
 
-                mlPredict(resolve,lastRow,backTest);
+                mlPredict(resolve,lastRow,backTest,activeTrade);
             }
         });
     } else {
@@ -379,6 +433,10 @@ app.post('/save', function(req, res) {
 
 app.get('/backTest', function(req, res) {
     backTest(res);
+});
+
+app.get('/simulate', function(req, res) {
+    portfolioSimulation(res);
 });
 
 app.listen(8080, () => console.log('Example app listening on port 3000 t!'))
