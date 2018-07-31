@@ -305,7 +305,7 @@ function addData(data,res) {
 function portfolioSimulation(res) {
     let test = true;
     if (test) {
-        csvRowsCopySimulation = csvAllRows.slice(500,700);
+        csvRowsCopySimulation = csvAllRows.slice(4000,5000);
     } else {
         csvRowsCopySimulation = csvAllRows.slice(15,csvAllRows.length - 1);
     }
@@ -471,13 +471,15 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 if (activeTrade) {
                     let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
                     mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
-                    let totalValuePurchased = parseFloat(priceData[4] * 5);
+                    let totalValuePurchased = parseFloat(priceData[4] * 70);
                     if (mlBuy && lastActiveTrade == "-1") {
                         lastActiveTrade = "1";
                         testPortfolio = testPortfolio - totalValuePurchased;
+                        console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased);
                     } else if (!mlBuy && lastActiveTrade == "1") {
                         lastActiveTrade = "-1";
                         testPortfolio = testPortfolio + totalValuePurchased;
+                        console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased);
                     }
                 }
 
