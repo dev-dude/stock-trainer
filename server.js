@@ -15,7 +15,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 const models = [
-    {"type":"1 day ahead no volume","model":"ml-swqlD7B0tW2"},
+    {"type":"1 day ahead no volume","model":"ml-v2BGXmOj7z3"},
     {"type":"2 days ahead no volume","model":"ml-fu7bKU8rxBI"},
 ];
 AWS.config.update(configFile.awsKeys);
@@ -53,7 +53,7 @@ function parseBuyAndSellData(res) {
     buyData = [];
     buyDataAndDateOnly = [];
     count = 0;
-    fs.createReadStream("./buyData.csv")
+    fs.createReadStream("./buyData2.csv")
     .pipe(parse({delimiter: ','}))
     .on('data', function(csvrow) {
         buyData.push(csvrow);
@@ -177,6 +177,10 @@ function addData(data,res) {
 
         if (csvAllRows[i][0] === data.time) {
             console.log("isBuy:" + isBuy);
+             // late so need to rework
+
+            //TODO: DISABLE FOR TEST REMEMBER TO RE ENABLE
+            /*
             if (isBuy) {
                 csvAllRows[i-1][12] = 1;
                 isBuy = false;
@@ -184,7 +188,15 @@ function addData(data,res) {
                 csvAllRows[i-1][12] = -1;
                 isBuy = true;
             }
+           
+            let reSaveTimestamp = moment(csvAllRows[i][0]).utc().unix();
+            buyDataMap[reSaveTimestamp] = !isBuy ? "1" : "-1";
+            
+
+
+
             thereWasABuyOrSell = true;
+            */
             dataRow = csvAllRows[i];
         } else {
             thereWasABuyOrSell = false;
@@ -212,14 +224,14 @@ function addData(data,res) {
         if (i > 1) {
             let singleDayVolume = ((csvAllRows[i][6] - csvAllRows[i-1][6]) / csvAllRows[i-1][6]);
             let singleDayGains = ((csvAllRows[i][5] - csvAllRows[i-1][5]) / csvAllRows[i-1][5]);
-            csvAllRows[i][7] = singleDayGains.toFixed(3); 
-            csvAllRows[i][11] = singleDayVolume.toFixed(3)
+            csvAllRows[i][7] = singleDayGains.toFixed(2); 
+            csvAllRows[i][11] = singleDayVolume.toFixed(2)
             if (i > 2) {
                 let multiDayGains = ((csvAllRows[i][5] - csvAllRows[i-2][5]) / csvAllRows[i-2][5]);
-                csvAllRows[i][8] = multiDayGains.toFixed(3);
+                csvAllRows[i][8] = multiDayGains.toFixed(2);
                 if (i > 3) {
                     let smaGains = ((parseFloat(csvAllRows[i][7]) + parseFloat(csvAllRows[i-1][7]) +  parseFloat(csvAllRows[i-2][7])) / 3);
-                    csvAllRows[i][9] = smaGains.toFixed(3);
+                    csvAllRows[i][9] = smaGains.toFixed(2);
                 }
     
             }
@@ -228,6 +240,7 @@ function addData(data,res) {
         if (i > 28 && stockRSIValues[i-29]) {
             let roundNumber = Math.round(stockRSIValues[i-29] * 10) / 10;
             csvAllRows[i][10] = parseFloat(roundNumber);
+
             let smaGainAverage = 0;
             let stochRsiAverage = 0;
             let buyAverage = 0;
@@ -235,20 +248,23 @@ function addData(data,res) {
             let stochRsiTotal = 0;
             let buyTotal = 0;
             let z = 0;
-            for (;z < 7; z++) {
+            let stochAverage = [];
+            for (;z < 6; z++) {
                 smaTotal += parseFloat(csvAllRows[i-z][9]);
+                stochAverage.push(parseFloat(csvAllRows[i-z][10]));
                 stochRsiTotal += parseFloat(csvAllRows[i-z][10]);
                 buyTotal += parseFloat(csvAllRows[i-z][12]);
             }
+            //console.log(stochAverage);
             smaGainAverage = smaTotal / 6;
             stochRsiAverage = stochRsiTotal / 6;
             buyAverage = buyTotal / 6;
 
             let smaGains = ((parseFloat(csvAllRows[i][7]) + parseFloat(csvAllRows[i-1][7]) +  parseFloat(csvAllRows[i-2][7])) / 3);
-            csvAllRows[i][9] = smaGains.toFixed(3);
+            csvAllRows[i][9] = smaGains.toFixed(2);
 
-            csvAllRows[i][13] = stochRsiAverage.toFixed(3);
-            csvAllRows[i][14] = smaGainAverage.toFixed(3);
+            csvAllRows[i][13] = stochRsiAverage.toFixed(2);
+            csvAllRows[i][14] = smaGainAverage.toFixed(2);
             csvAllRows[i][15] = buyAverage.toFixed(3);
 
         }
@@ -317,13 +333,13 @@ function backTest(res) {
     backTestData = [];
     for (; u < buyData.length;u++) {
         if (buyData[u][6] == "-1" || buyData[u][6] == "1") {
-            if (testMode && backTestData.length > 10) {
+            if (testMode && backTestData.length > 100) {
                 break;
             }
             testCount++;
             let predictAccuracyObj = {decision:0,dataOneDayBackData:{},dataCurrentData:{},mlPredict:{},correct:null};
             predictAccuracyObj.decision = buyData[u][6];
-            predictAccuracyObj.dataOneDayBackData = buyData[u-1];
+            predictAccuracyObj.dataOneDayBackData = buyData[u];
             predictAccuracyObj.dataCurrentData = buyData[u];
             backTestData.push(predictAccuracyObj);
         }
@@ -363,6 +379,9 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
         let smaGains;
         let stochRsi;
         let volume;
+        let stochAverage;
+        let smaGainAverage;
+        let buysAverage;
 
       
         if (activeTrade) {
@@ -377,12 +396,18 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
             smaGains = lastRow[3].toString();
             stochRsi = lastRow[4].toString();
             volume = lastRow[5].toString();
+            stochAverage = lastRow[7].toString();
+            smaGainAverage = lastRow[8].toString();
+            buysAverage = lastRow[9].toString();
         } else {
             gains = lastRow[7].toString();
             multiDayGains = lastRow[8].toString();
             smaGains = lastRow[9].toString();
             stochRsi = lastRow[10].toString();
             volume = lastRow[11].toString();
+            stochAverage = lastRow[13].toString();
+            smaGainAverage = lastRow[14].toString();
+            buysAverage = lastRow[15].toString();
             activeModel = models[mlPredictCounter];
             if (activeTrade) {
                 activeModel = models[0];
@@ -399,7 +424,10 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 "Multi Day Gains": multiDayGains,
                 "SMA Gains": smaGains,
                 "Stoch RSI": stochRsi,
-                "Single Day Volume": volume
+                "Single Day Volume": volume,
+                "Stoch Avg": stochAverage,
+                "SMA Gains Avg": smaGainAverage,
+                "Buys Avg": buysAverage
             }
         };
 
