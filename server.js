@@ -339,7 +339,7 @@ function backTest(res) {
             testCount++;
             let predictAccuracyObj = {decision:0,dataOneDayBackData:{},dataCurrentData:{},mlPredict:{},correct:null};
             predictAccuracyObj.decision = buyData[u][6];
-            predictAccuracyObj.dataOneDayBackData = buyData[u];
+            predictAccuracyObj.dataOneDayBackData = buyData[u -1];
             predictAccuracyObj.dataCurrentData = buyData[u];
             backTestData.push(predictAccuracyObj);
         }
