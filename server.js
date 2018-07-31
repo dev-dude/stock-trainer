@@ -39,6 +39,7 @@ let totalPredictions = [];
 let mlPredictCounter = 0;
 let buyData = [];
 let buyDataAndDateOnly = [];
+let buyDataMap = {};
 let backTestData = [];
 let backTestCorrect = 0;
 let backTestNonCorrect = 0;
@@ -59,6 +60,10 @@ function parseBuyAndSellData(res) {
         let timeStamp = moment(csvrow[0]).utc().unix();
         if (count > 0) {
             buyDataAndDateOnly.push({"timeStamp":timeStamp * 1000,"action":csvrow[6]});
+
+            if (csvrow[6] == "1" || csvrow[6] == "-1") {
+                buyDataMap[timeStamp] = csvrow[6];
+            }
         }
         count++;
     }).on('end',function() {
@@ -123,7 +128,7 @@ function parseData(res) {
 
 function downloadCsv(response) {
     console.log("download csv");
-    let dest = process.cwd() + "\\test.csv";
+    let dest = "./test.csv";
     request.get({
         headers: {
           'Cookie': 'B=b9ihaitdim360&b=3&s=8m'
@@ -149,7 +154,7 @@ function addData(data,res) {
     let dataRow = [];
     let isBuyBeforeChange = isBuy;
     let adjustedClose = [];
-
+    let thereWasABuyOrSell = false;
 
 
     for (; i < csvAllRows.length; i++) {
@@ -163,26 +168,44 @@ function addData(data,res) {
             csvAllRows[i][10] = "Stoch RSI";
             csvAllRows[i][11] = "Single Day Volume";
             csvAllRows[i][12] = "Buy";
+            csvAllRows[i][13] = "Stoch Avg";
+            csvAllRows[i][14] = "SMA Gains Avg";
+            csvAllRows[i][15] = "Buys Avg";
+
             continue;
         }
 
         if (csvAllRows[i][0] === data.time) {
             console.log("isBuy:" + isBuy);
             if (isBuy) {
-                csvAllRows[i][12] = 1;
+                csvAllRows[i-1][12] = 1;
                 isBuy = false;
             } else {
-                csvAllRows[i][12] = -1;
+                csvAllRows[i-1][12] = -1;
                 isBuy = true;
             }
+            thereWasABuyOrSell = true;
             dataRow = csvAllRows[i];
         } else {
+            thereWasABuyOrSell = false;
             csvAllRows[i][7] = "";
             csvAllRows[i][8] = "";
             csvAllRows[i][9] = "";
             csvAllRows[i][10] = "";
             csvAllRows[i][11] = "";
             csvAllRows[i][12] = "0";
+            csvAllRows[i][13] = "";
+            csvAllRows[i][14] = "";
+            csvAllRows[i][15] = "";
+        }
+
+        let timestamp = 0;
+        if (csvAllRows[i+1]) {
+            timestamp = moment(csvAllRows[i+1][0]).utc().unix();
+        }
+        let buyAction = buyDataMap[timestamp];
+        if (buyAction && !thereWasABuyOrSell) {
+            csvAllRows[i][12] = buyAction;
         }
 
         let calcMovingAverage = [];
@@ -198,12 +221,36 @@ function addData(data,res) {
                     let smaGains = ((parseFloat(csvAllRows[i][7]) + parseFloat(csvAllRows[i-1][7]) +  parseFloat(csvAllRows[i-2][7])) / 3);
                     csvAllRows[i][9] = smaGains.toFixed(3);
                 }
+    
             }
         }
 
         if (i > 28 && stockRSIValues[i-29]) {
             let roundNumber = Math.round(stockRSIValues[i-29] * 10) / 10;
             csvAllRows[i][10] = parseFloat(roundNumber);
+            let smaGainAverage = 0;
+            let stochRsiAverage = 0;
+            let buyAverage = 0;
+            let smaTotal = 0;
+            let stochRsiTotal = 0;
+            let buyTotal = 0;
+            let z = 0;
+            for (;z < 7; z++) {
+                smaTotal += parseFloat(csvAllRows[i-z][9]);
+                stochRsiTotal += parseFloat(csvAllRows[i-z][10]);
+                buyTotal += parseFloat(csvAllRows[i-z][12]);
+            }
+            smaGainAverage = smaTotal / 6;
+            stochRsiAverage = stochRsiTotal / 6;
+            buyAverage = buyTotal / 6;
+
+            let smaGains = ((parseFloat(csvAllRows[i][7]) + parseFloat(csvAllRows[i-1][7]) +  parseFloat(csvAllRows[i-2][7])) / 3);
+            csvAllRows[i][9] = smaGains.toFixed(3);
+
+            csvAllRows[i][13] = stochRsiAverage.toFixed(3);
+            csvAllRows[i][14] = smaGainAverage.toFixed(3);
+            csvAllRows[i][15] = buyAverage.toFixed(3);
+
         }
     }
    let convertedRows = "";
@@ -211,7 +258,7 @@ function addData(data,res) {
    for (; x < csvAllRows.length; x++) {
 
     convertedRows += csvAllRows[x][0] + "," +  csvAllRows[x][7] + "," + csvAllRows[x][8] + "," + csvAllRows[x][9] +
-     "," + csvAllRows[x][10] + "," + csvAllRows[x][11] + "," + csvAllRows[x][12] + "\n";
+     "," + csvAllRows[x][10] + "," + csvAllRows[x][11] + "," + csvAllRows[x][12] + "," + csvAllRows[x][13] + "," + csvAllRows[x][14] + "," + csvAllRows[x][15] +"\n";
    }
    let lastRow = csvAllRows[csvAllRows.length - 1]; 
    
@@ -242,7 +289,7 @@ function addData(data,res) {
 function portfolioSimulation(res) {
     let test = true;
     if (test) {
-        csvRowsCopySimulation = csvAllRows.slice(15,500);
+        csvRowsCopySimulation = csvAllRows.slice(500,700);
     } else {
         csvRowsCopySimulation = csvAllRows.slice(15,csvAllRows.length - 1);
     }
