@@ -15,8 +15,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 const models = [
-    {"type":"1 day ahead no volume","model":"ml-v2BGXmOj7z3"},
-    {"type":"2 days ahead no volume","model":"ml-fu7bKU8rxBI"},
+    {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
+    {"type":"1 day control","model":"ml-v2BGXmOj7z3"},
 ];
 AWS.config.update(configFile.awsKeys);
 
@@ -178,25 +178,20 @@ function addData(data,res) {
         if (csvAllRows[i][0] === data.time) {
             console.log("isBuy:" + isBuy);
              // late so need to rework
-
-            //TODO: DISABLE FOR TEST REMEMBER TO RE ENABLE
-            /*
-            if (isBuy) {
-                csvAllRows[i-1][12] = 1;
-                isBuy = false;
-            } else {
-                csvAllRows[i-1][12] = -1;
-                isBuy = true;
-            }
-           
-            let reSaveTimestamp = moment(csvAllRows[i][0]).utc().unix();
-            buyDataMap[reSaveTimestamp] = !isBuy ? "1" : "-1";
+            let editing = true;
+            if (editing) {
+                if (isBuy) {
+                    csvAllRows[i-1][12] = 1;
+                    isBuy = false;
+                } else {
+                    csvAllRows[i-1][12] = -1;
+                    isBuy = true;
+                }
             
-
-
-
-            thereWasABuyOrSell = true;
-            */
+                let reSaveTimestamp = moment(csvAllRows[i][0]).utc().unix();
+                buyDataMap[reSaveTimestamp] = !isBuy ? "1" : "-1";
+                thereWasABuyOrSell = true;    
+            }
             dataRow = csvAllRows[i];
         } else {
             thereWasABuyOrSell = false;
@@ -558,4 +553,4 @@ app.get('/checkBuySellData', function(req, res) {
 });
 
 
-app.listen(8080, () => console.log('Example app listening on port 3000 t!'))
+app.listen(8080, () => console.log('Example app listening on port 8080!'))
