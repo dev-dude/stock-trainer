@@ -320,6 +320,43 @@ function portfolioSimulation(res) {
     });
 }
 
+function checkBuySellData(res) {
+    let z = 0;
+    let portfolio = 10000;
+    let amountBought;
+    let lastPortfolioValue;
+    let lastTrade;
+    for (; z < csvAllRows.length; z++) {
+
+        let y = z;
+        //console.log(csvAllRows[z][12]);
+        if (csvAllRows[z][12] == "1") {
+           
+            if (lastTrade == "buy") {
+                console.log("last buy error " + csvAllRows[z + 1][0]);
+            } 
+            lastTrade = "buy";
+            amountBought = (50 * parseFloat(csvAllRows[z + 1][4]));
+            //console.log("buy " + amountBought + " " + csvAllRows[z + 1][0]);
+            lastPortfolioValue = portfolio;
+            portfolio = portfolio - amountBought;
+        } else if (csvAllRows[z][12] == "-1") {
+            if (lastTrade == "sell") {
+                console.log("last sell error " + csvAllRows[z + 1][0]);
+            } 
+            lastTrade = "sell";
+            amountSold =  (50 * parseFloat(csvAllRows[z + 1][4]));
+            //console.log("sell " + amountSold + " " + csvAllRows[z + 1][0]);
+            if (amountSold < amountBought) {
+                console.log("*** lost money " + csvAllRows[z + 1][0]);
+            }
+            portfolio = portfolio + amountSold;
+        }
+    }    
+    console.log(portfolio);
+    res.send({"status":"success"});
+}
+
 function backTest(res) {
     let u = 0;
     let testMode = true;
@@ -515,5 +552,10 @@ app.get('/backTest', function(req, res) {
 app.get('/simulate', function(req, res) {
     portfolioSimulation(res);
 });
+
+app.get('/checkBuySellData', function(req, res) {
+    checkBuySellData(res);
+});
+
 
 app.listen(8080, () => console.log('Example app listening on port 3000 t!'))
