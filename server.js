@@ -310,6 +310,7 @@ function addData(data,res) {
                 } else{
                     let responseMessage = {msg:"saved","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow};
                     if (addPointsToBuyData) {
+                        console.log("writing data to buyData4.csv " + addPointsToBuyData);
                         fs.writeFile('./buyData4.csv', buyDataCsvOut, 'utf8', function (err) {
                             console.log('It\'s saved!');
                             res.send(responseMessage);
@@ -562,7 +563,11 @@ app.get('/:editing', function(req, res) {
     intialRun = true;
     firstRunData = {};
     console.log("start");
-    addPointsToBuyData = req.param("editing");
+    if (req.param("editing") != "true") {
+        addPointsToBuyData = false;
+    }  else {
+        addPointsToBuyData = true;
+    }
     console.log("Editing " + addPointsToBuyData);
     downloadCsv(res);
 });
