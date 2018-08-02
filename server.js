@@ -383,7 +383,7 @@ function checkBuySellData(res) {
 
 function backTest(res) {
     let u = 0;
-    let testMode = false;
+    let testMode = true;
     backTestCorrect = 0;
     backTestNonCorrect = 0;
     buyCorrectCounter = 0;
@@ -393,15 +393,30 @@ function backTest(res) {
     let testCount = 0;
     backTestData = [];
     for (; u < buyData.length;u++) {
-        if (buyData[u][6] == "-1" || buyData[u][6] == "1") {
+        if (buyData[u][1] == "-1" || buyData[u][1] == "1") {
             if (testMode && backTestData.length > 100) {
                 break;
             }
             testCount++;
             let predictAccuracyObj = {decision:0,dataOneDayBackData:{},dataCurrentData:{},mlPredict:{},correct:null};
-            predictAccuracyObj.decision = buyData[u][6];
-            predictAccuracyObj.dataOneDayBackData = buyData[u -1];
-            predictAccuracyObj.dataCurrentData = buyData[u];
+            predictAccuracyObj.decision = buyData[u][1];
+
+            let timeMinusOneDay = moment(buyData[u][0]).subtract(1,"days").format("M/D/Y");
+            predictAccuracyObj.dataOneDayBackData = csvDataMap[timeMinusOneDay];
+            predictAccuracyObj.dataCurrentData =  csvDataMap[buyData[u][0]];
+
+            if (!csvDataMap[timeMinusOneDay] || !csvDataMap[buyData[u][0]]) {
+                let i = 2;
+                for (; i < 5; i++) {
+                    let minusNDays = moment(buyData[u][0]).subtract(i,"days").format("M/D/Y");
+                    if (csvDataMap[minusNDays] != null) {
+                        predictAccuracyObj.dataOneDayBackData = csvDataMap[minusNDays];
+                        break;
+                    }
+
+                }
+            }
+        
             backTestData.push(predictAccuracyObj);
         }
     }
@@ -449,33 +464,25 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
             lastRow = csvRowsCopySimulation[mlPredictCounter];
         }
 
+
+        
         if (backTest) {
             activeModel = models[0];
             lastRow = backTestData[mlPredictCounter].dataOneDayBackData;
-            gains = lastRow[1].toString();
-            multiDayGains = lastRow[2].toString();
-            smaGains = lastRow[3].toString();
-            stochRsi = lastRow[4].toString();
-            volume = lastRow[5].toString();
-            stochAverage = lastRow[7].toString();
-            smaGainAverage = lastRow[8].toString();
-            buysAverage = lastRow[9].toString();
         } else {
-            gains = lastRow[7].toString();
-            multiDayGains = lastRow[8].toString();
-            smaGains = lastRow[9].toString();
-            stochRsi = lastRow[10].toString();
-            volume = lastRow[11].toString();
-            stochAverage = lastRow[13].toString();
-            smaGainAverage = lastRow[14].toString();
-            buysAverage = lastRow[15].toString();
             activeModel = models[mlPredictCounter];
             if (activeTrade) {
                 activeModel = models[0];
             }
         }
-
-      
+        gains = lastRow[7].toString();
+        multiDayGains = lastRow[8].toString();
+        smaGains = lastRow[9].toString();
+        stochRsi = lastRow[10].toString();
+        volume = lastRow[11].toString();
+        stochAverage = lastRow[13].toString();
+        smaGainAverage = lastRow[14].toString();
+        buysAverage = lastRow[15].toString();
 
         let params = {
             MLModelId: activeModel.model, 
@@ -575,15 +582,15 @@ app.post('/save', function(req, res) {
     addData(req.body,res);
 });
 
-app.get('/backTest', function(req, res) {
+app.get('/test/backTest', function(req, res) {
     backTest(res);
 });
 
-app.get('/simulate', function(req, res) {
+app.get('/test/simulate', function(req, res) {
     portfolioSimulation(res);
 });
 
-app.get('/checkBuySellData', function(req, res) {
+app.get('/test/checkBuySellData', function(req, res) {
     checkBuySellData(res);
 });
 
