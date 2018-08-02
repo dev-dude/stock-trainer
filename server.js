@@ -16,7 +16,7 @@ app.use(express.static('public'));
 
 const models = [
     {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
-    {"type":"1 day control","model":"ml-v2BGXmOj7z3"},
+    {"type":"1 day control","model":"ml-v2BGXmOj7z3"}
 ];
 AWS.config.update(configFile.awsKeys);
 
@@ -33,8 +33,6 @@ let stockRSIValues = [];
 let intialRun = true;
 let firstRunData = {};
 let isBuy = true;
-let testData = [45.15,46.26,46.5,46.23,46.08,46.03,46.83,47.69,47.54,49.25,49.23,48.2,47.57,47.61,48.08,47.21,46.76,46.68,46.21,47.47,47.98,47.13,46.58,46.03,46.54,46.79,45.83,45.93,45.8,46.69,47.05,47.3,48.1,47.93,47.03,47.58,47.38,48.1,48.47,47.6,47.74,48.21,48.56,48.15,47.81,47.41,45.66,45.75,45.07,43.77,43.25,44.68,45.11,45.8,45.74,46.23,46.81,46.87,46.04,44.78,44.58,44.14,45.66,45.89,46.73,46.86,46.95,46.74,46.67,45.3,45.4,45.54,44.96,44.47,44.68,45.91,46.03,45.98,46.32,46.53,46.28,46.14,45.92,44.8,44.38,43.48,44.28,44.87,44.98,43.96,43.58,42.93,42.46,42.8,43.27,43.89,45,44.03,44.37,44.71,45.38,45.54];
-let rsiTestData = [54.09,59.90,58.20,59.76,52.35,52.82,56.94,57.47,55.26,57.51,54.80,51.47,56.16,58.34,56.02,60.22,56.75,57.38,50.23,57.06,61.51,63.69,66.22,69.16,70.73,67.79,68.82,62.38,67.59,67.59];
 let totalPredictions = [];
 let mlPredictCounter = 0;
 let buyData = [];
@@ -48,21 +46,22 @@ let sellCorrectCounter = 0;
 let testPortfolio = 10000;
 let csvDataMap = {};
 let lastActiveTrade = "-1";
+let addPointsToBuyData = false;
 
 function parseBuyAndSellData(res) {
     buyData = [];
     buyDataAndDateOnly = [];
     count = 0;
-    fs.createReadStream("./buyData2.csv")
+    fs.createReadStream("./buyData4.csv")
     .pipe(parse({delimiter: ','}))
     .on('data', function(csvrow) {
         buyData.push(csvrow);
         let timeStamp = moment(csvrow[0]).utc().unix();
         if (count > 0) {
-            buyDataAndDateOnly.push({"timeStamp":timeStamp * 1000,"action":csvrow[6]});
+            buyDataAndDateOnly.push({"originalTime": csvrow[0], "timeStamp":timeStamp * 1000,"action":csvrow[1]});
 
-            if (csvrow[6] == "1" || csvrow[6] == "-1") {
-                buyDataMap[timeStamp] = csvrow[6];
+            if (csvrow[1] == "1" || csvrow[1] == "-1") {
+                buyDataMap[timeStamp] = csvrow[1];
             }
         }
         count++;
@@ -82,7 +81,7 @@ function parseData(res) {
         }
         let timeStamp = moment(csvrow[0]).utc().unix();
         let formattedTimeStamp = moment(parseInt(timeStamp.toString()+"000")).format("M/D/Y");
-        let csvObj = [timeStamp*1000,parseFloat(csvrow[4]),count];
+        let csvObj = [timeStamp*1000,parseFloat(csvrow[4]),count,formattedTimeStamp];
         if (count > 0) {
             csvDataMap[formattedTimeStamp] = csvrow;
             csvData.push(csvObj);       
@@ -155,7 +154,8 @@ function addData(data,res) {
     let isBuyBeforeChange = isBuy;
     let adjustedClose = [];
     let thereWasABuyOrSell = false;
-
+    let addedBuy = "0";
+    let reSaveTimestamp;
 
     for (; i < csvAllRows.length; i++) {
 
@@ -178,8 +178,7 @@ function addData(data,res) {
         if (csvAllRows[i][0] === data.time) {
             console.log("isBuy:" + isBuy);
              // late so need to rework
-            let editing = true;
-            if (editing) {
+            if (addPointsToBuyData) {
                 if (isBuy) {
                     csvAllRows[i-1][12] = 1;
                     isBuy = false;
@@ -188,8 +187,9 @@ function addData(data,res) {
                     isBuy = true;
                 }
             
-                let reSaveTimestamp = moment(csvAllRows[i][0]).utc().unix();
+                reSaveTimestamp = moment(csvAllRows[i][0]).utc().unix();
                 buyDataMap[reSaveTimestamp] = !isBuy ? "1" : "-1";
+                addedBuy = !isBuy ? "1" : "-1";
                 thereWasABuyOrSell = true;    
             }
             dataRow = csvAllRows[i];
@@ -271,6 +271,27 @@ function addData(data,res) {
     convertedRows += csvAllRows[x][0] + "," +  csvAllRows[x][7] + "," + csvAllRows[x][8] + "," + csvAllRows[x][9] +
      "," + csvAllRows[x][10] + "," + csvAllRows[x][11] + "," + csvAllRows[x][12] + "," + csvAllRows[x][13] + "," + csvAllRows[x][14] + "," + csvAllRows[x][15] +"\n";
    }
+
+   // Write Buy Data
+   if (addPointsToBuyData) {
+        let z = 0;
+        let buyDataCsvOut = "";
+        let action = "0";
+        for (; z < csvData.length;z++) {
+            if (reSaveTimestamp == csvData[z][0]/1000) {
+                action = !isBuy ? "1" : "-1";
+                //buyDataAndDateOnly[z] = {"originalTime": moment(csvData[z][0]).format("M/D/Y"), "timeStamp":reSaveTimestamp,"action":action}
+            } else {
+                if (buyDataMap[csvData[z][0]/1000]) {
+                    action = buyDataMap[csvData[z][0]/1000];
+                } else {
+                    action = "0";
+                }
+            }
+            buyDataCsvOut += moment(csvData[z][0]).format("M/D/Y") + "," +  action +"\n";
+        }
+    }
+
    let lastRow = csvAllRows[csvAllRows.length - 1]; 
    
    let p = new Promise(function(resolve, reject) {
@@ -283,12 +304,19 @@ function addData(data,res) {
        if (convertedRows.length > 0) {
             fs.writeFile('public/testout.csv', convertedRows, 'utf8', function (err) {
                 if (err) {
-                console.log(err);
-                console.log('Some error occured - file either not saved or corrupted file saved.');
-                res.send({msg:"error","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow});
+                    console.log(err);
+                    console.log('Some error occured - file either not saved or corrupted file saved.');
+                    res.send({msg:"error","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow});
                 } else{
-                console.log('It\'s saved!');
-                res.send({msg:"saved","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow});
+                    let responseMessage = {msg:"saved","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow};
+                    if (addPointsToBuyData) {
+                        fs.writeFile('./buyData4.csv', buyDataCsvOut, 'utf8', function (err) {
+                            console.log('It\'s saved!');
+                            res.send(responseMessage);
+                        });
+                    } else {
+                        res.send(responseMessage);
+                    }
                 }
             });
         } else {
@@ -300,7 +328,7 @@ function addData(data,res) {
 function portfolioSimulation(res) {
     let test = true;
     if (test) {
-        csvRowsCopySimulation = csvAllRows.slice(4000,5000);
+        csvRowsCopySimulation = csvAllRows.slice(4000,4400);
     } else {
         csvRowsCopySimulation = csvAllRows.slice(15,csvAllRows.length - 1);
     }
@@ -354,7 +382,7 @@ function checkBuySellData(res) {
 
 function backTest(res) {
     let u = 0;
-    let testMode = true;
+    let testMode = false;
     backTestCorrect = 0;
     backTestNonCorrect = 0;
     buyCorrectCounter = 0;
@@ -525,7 +553,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
     }
 }
 
-app.get('/', function(req, res) {
+app.get('/:editing', function(req, res) {
     csvData=[];
     priceData=[];
     count = 0;
@@ -534,6 +562,8 @@ app.get('/', function(req, res) {
     intialRun = true;
     firstRunData = {};
     console.log("start");
+    addPointsToBuyData = req.param("editing");
+    console.log("Editing " + addPointsToBuyData);
     downloadCsv(res);
 });
 app.post('/save', function(req, res) {
