@@ -21,7 +21,7 @@
   let allSaves = [];
   let url = new URL(window.location.href);
   let isLocal = url.searchParams.get("isLocal");
-  let edit = url.searchParams.get("edit") ? true : false;
+  let edit = url.searchParams.get("edit") == "true" ? true : false;
   let server = "http://54.198.14.12:8080";
   if (isLocal) {
       server = "http://localhost:8080";
