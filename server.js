@@ -273,9 +273,9 @@ function addData(data,res) {
    }
 
    // Write Buy Data
+   let buyDataCsvOut = "";
    if (addPointsToBuyData) {
         let z = 0;
-        let buyDataCsvOut = "";
         let action = "0";
         for (; z < csvData.length;z++) {
             if (reSaveTimestamp == csvData[z][0]/1000) {
