@@ -43,6 +43,8 @@ let backTestCorrect = 0;
 let backTestNonCorrect = 0;
 let buyCorrectCounter = 0;
 let sellCorrectCounter = 0;
+let backTestBuyNonCorrect = 0;
+let backTestSellNonCorrect = 0;
 let testPortfolio = 10000;
 let csvDataMap = {};
 let lastActiveTrade = "-1";
@@ -389,14 +391,17 @@ function backTest(res) {
     buyCorrectCounter = 0;
     sellCorrectCounter = 0;
     testPortfolio = 0;
+    backTestBuyNonCorrect = 0;
+    backTestSellNonCorrect = 0;
     
     let testCount = 0;
     backTestData = [];
     for (; u < buyData.length;u++) {
         if (buyData[u][1] == "-1" || buyData[u][1] == "1") {
-            if (testMode && backTestData.length > 100) {
-                break;
-            }
+            if (testMode && u < 4200) {
+  	
+                //break;
+            } else {
             testCount++;
             let predictAccuracyObj = {decision:0,dataOneDayBackData:{},dataCurrentData:{},mlPredict:{},correct:null};
             predictAccuracyObj.decision = buyData[u][1];
@@ -416,8 +421,10 @@ function backTest(res) {
 
                 }
             }
-        
+	   
+   
             backTestData.push(predictAccuracyObj);
+	   }
         }
     }
     console.log("total test rows " + testCount);
@@ -435,8 +442,10 @@ function backTest(res) {
         console.log("percentage notcorrect " + backTestNonCorrect/backTestData.length);
         console.log("buy correct " + buyCorrectCounter);
         console.log("sell correct " + sellCorrectCounter);
-        console.log("correct buy percentage " + buyCorrectCounter/backTestCorrect);
-        console.log("correct sell percentage " + sellCorrectCounter/backTestCorrect);
+	console.log("buy not correct " + backTestBuyNonCorrect);
+  	console.log("sell not correct " + backTestSellNonCorrect);
+        console.log("correct buy percentage " + (1 - parseFloat(backTestBuyNonCorrect/buyCorrectCounter)));
+        console.log("correct sell percentage " + (1 - parseFloat(backTestSellNonCorrect/sellCorrectCounter)));
         console.log("testPortfolio " + testPortfolio);
         res.send({"status":"success"});
     });
@@ -532,8 +541,12 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     } else {
                         backTestNonCorrect++;
                         backTestData[mlPredictCounter].correct = false;
+ 			if (backTestData[mlPredictCounter].decision == "-1" && mlBuy) {
+			   backTestBuyNonCorrect++;
+			} else if (backTestData[mlPredictCounter].decision == "1" && !mlBuy) {
+			   backTestSellNonCorrect++;
+			}
                     }
-
                 }
 
                 if (activeTrade) {
