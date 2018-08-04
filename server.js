@@ -9,6 +9,7 @@ const parse = require('csv-parse');
 const bodyParser = require('body-parser');
 const stockRsi = require('technicalindicators').RSI;
 const EMA = require('technicalindicators').EMA;
+const TRIX = require('technicalindicators').TRIX; 
 const AWS = require('aws-sdk');
 
 app.use(bodyParser.json());
@@ -16,6 +17,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 const models = [
+    {"type":"expon smoothed mov avg","model":"ml-XnkrBP12Opy"},
     {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
     {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
     {"type":"1 day control","model":"ml-v2BGXmOj7z3"}
@@ -176,7 +178,7 @@ function addData(data,res) {
             csvAllRows[i][14] = "SMA Gains Avg";
             csvAllRows[i][15] = "Buys Avg";
             csvAllRows[i][16] = "Expon Moving Avg";
-
+            csvAllRows[i][17] = "Triple Expon Smoothed";
             continue;
         }
 
@@ -210,7 +212,7 @@ function addData(data,res) {
             csvAllRows[i][14] = "";
             csvAllRows[i][15] = "";
             csvAllRows[i][16] = "";
-
+            csvAllRows[i][17] = "";
         }
 
         let timestamp = 0;
@@ -283,23 +285,30 @@ function addData(data,res) {
 
     let period = 8;
     let emaValues = EMA.calculate({period : period, values : gainsOnly});
+    let tripleEmA = TRIX.calculate({period : period, values : gainsOnly});
+
+
     console.log(emaValues.length);
-
-    emaValues.unshift(0);
-    emaValues.unshift(0);
-    emaValues.unshift(0);
-    emaValues.unshift(0);
-    emaValues.unshift(0);
-    emaValues.unshift(0);
-    emaValues.unshift(0);
-    emaValues.unshift(0);
-    emaValues.unshift(0);
-
+    console.log(tripleEmA.length);
+    let  t = 0;
+    for (;t < period + 1; t++) {
+        emaValues.unshift(0);
+    }
+    t = 0;
+    for (;t < period + 16; t++) {
+        tripleEmA.unshift(0);
+    }
+    console.log(csvAllRows.length);
+    console.log(emaValues.length);
+    console.log(tripleEmA.length);
+    
     
     z = 0;
     for (; z < csvAllRows.length; z++) {
         if (emaValues[z]) {
             csvAllRows[z][16] = emaValues[z].toFixed(3);
+            let tripleSmoothed = ((tripleEmA[z] - tripleEmA[z-1]) / tripleEmA[z-1]);
+            csvAllRows[z][17] = tripleSmoothed.toFixed(2);
         }
     }
 
@@ -308,7 +317,8 @@ function addData(data,res) {
    for (; x < csvAllRows.length; x++) {
 
     convertedRows += csvAllRows[x][0] + "," +  csvAllRows[x][7] + "," + csvAllRows[x][8] + "," + csvAllRows[x][9] +
-     "," + csvAllRows[x][10] + "," + csvAllRows[x][11] + "," + csvAllRows[x][12] + "," + csvAllRows[x][13] + "," + csvAllRows[x][14] + "," + csvAllRows[x][15] + "," +  csvAllRows[x][16]  +"\n";
+     "," + csvAllRows[x][10] + "," + csvAllRows[x][11] + "," + csvAllRows[x][12] + ","
+      + csvAllRows[x][13] + "," + csvAllRows[x][14] + "," + csvAllRows[x][15] + "," +  csvAllRows[x][16] + "," +  csvAllRows[x][17]  +"\n";
    }
 
    // Write Buy Data
@@ -505,6 +515,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
         let smaGainAverage;
         let buysAverage;
         let exponAvg;
+        let rateOfChange;
 
       
         if (activeTrade) {
@@ -531,6 +542,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
         smaGainAverage = lastRow[14].toString();
         buysAverage = lastRow[15].toString();
         exponAvg = lastRow[16].toString();
+        tripleExponSmooth = lastRow[17].toString();
 
 
 
@@ -546,7 +558,8 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 "Stoch Avg": stochAverage,
                 "SMA Gains Avg": smaGainAverage,
                 "Buys Avg": buysAverage,
-                "Expon Moving Avg": exponAvg
+                "Expon Moving Avg": exponAvg,
+                "Triple Expon Smoothed": tripleExponSmooth
 
             }
         };
