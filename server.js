@@ -17,6 +17,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 const models = [
+    {"type":"buy expons","model":"ml-5yT1zZ8CE8n"},
     {"type":"expon smoothed mov avg","model":"ml-XnkrBP12Opy"},
     {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
     {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
@@ -278,8 +279,8 @@ function addData(data,res) {
     let gainsOnly = [];
     let gainsAndDate = {};
     for (; z < csvAllRows.length; z++) {
-            gainsOnly.push(parseFloat(csvAllRows[z][7]));
-            let expon = {"gain":csvAllRows[z][7],"expon":0};
+            gainsOnly.push(parseFloat(csvAllRows[z][12]));
+            let expon = {"gain":csvAllRows[z][12],"expon":0};
             gainsAndDate[csvAllRows[z][0]] = expon;
     }
 
@@ -295,7 +296,7 @@ function addData(data,res) {
         emaValues.unshift(0);
     }
     t = 0;
-    for (;t < period + 16; t++) {
+    for (;t < period + 44; t++) {
         tripleEmA.unshift(0);
     }
     console.log(csvAllRows.length);
