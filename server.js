@@ -11,10 +11,14 @@ const stockRsi = require('technicalindicators').RSI;
 const EMA = require('technicalindicators').EMA;
 const TRIX = require('technicalindicators').TRIX; 
 const AWS = require('aws-sdk');
+const basicAuth = require('basic-auth-connect');
+
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
+app.use(basicAuth('stock', 'stat'));
+
 
 const models = [
     {"type":"buy smoothed","model":"ml-5yT1zZ8CE8n"},
