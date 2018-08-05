@@ -17,8 +17,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 const models = [
-    {"type":"buy expons","model":"ml-5yT1zZ8CE8n"},
-    {"type":"expon smoothed mov avg","model":"ml-XnkrBP12Opy"},
+    {"type":"buy smoothed","model":"ml-5yT1zZ8CE8n"},
     {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
     {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
     {"type":"1 day control","model":"ml-v2BGXmOj7z3"}
