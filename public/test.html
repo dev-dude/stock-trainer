@@ -11,9 +11,9 @@
 
   
   <div id="container" style="height: 500px; min-width: 310px"></div>
-  <div id="lastRow"></div>
-  <div id="predictions"></div>
-  <div id="allSaves"></div>
+  <div style="font-size:12px" id="predictions"></div>
+  <div style="font-size:12px" id="allSaves"></div>
+  <div style="font-size:12px" id="lastRow"></div>
     <script type="text/javascript">
   
   
@@ -28,7 +28,7 @@
   }
 
 
-  $.getJSON(server + "/" + edit, function (data) {
+  $.getJSON(server + "/download/" + edit, function (data) {
 
 
       csvData = data;
@@ -98,10 +98,14 @@
                                         let lastClick =  allSaves[i].isBuy ? "buy" : "sell";
                                         items +=  allSaves[i].data[0] + "-" + parseFloat(allSaves[i].data[4]).toFixed(2) + "- Last Click - " + lastClick + "<br>";
                                     }
-
+                                    let els = "<ul>";
+                                    responseCopy.predictions.forEach(function(prediction){
+                                        els += "<li> buy: " + prediction.buy + " sell:" +prediction.sell + " hold: " + prediction.hold + " model: " + prediction.type + "</li>";
+                                    });
+                                    els +="</ul>"
+                                    $('#predictions').html(els);
                                     $("#allSaves").html(items);
-                                    $('#predictions').html("<pre>"+JSON.stringify(responseCopy.predictions)+"</pre>");
-                                    $('#lastRow').html("<pre>"+JSON.stringify(responseCopy.lastRow)+"</pre>");
+                                    $('#lastRow').html("<p>"+JSON.stringify(responseCopy.lastRow)+"</p>");
                                 }, 'json');
                             }
                         }

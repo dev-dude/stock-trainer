@@ -634,7 +634,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
     }
 }
 
-app.get('/:editing', function(req, res) {
+app.get('/download/:editing', function(req, res) {
     csvData=[];
     priceData=[];
     count = 0;
