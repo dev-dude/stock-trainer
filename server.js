@@ -17,7 +17,7 @@ const basicAuth = require('basic-auth-connect');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
-app.use(basicAuth('stock', 'stat'));
+app.use(basicAuth('stock', 'chart'));
 
 
 const models = [
