@@ -189,6 +189,7 @@ function addData(data,res) {
         if (csvAllRows[i][0] === data.time) {
             console.log("isBuy:" + isBuy);
              // late so need to rework
+             reSaveTimestamp = moment(csvAllRows[i][0]).utc().unix();
             if (addPointsToBuyData) {
                 if (isBuy) {
                     csvAllRows[i-1][12] = 1;
@@ -198,10 +199,16 @@ function addData(data,res) {
                     isBuy = true;
                 }
             
-                reSaveTimestamp = moment(csvAllRows[i][0]).utc().unix();
                 buyDataMap[reSaveTimestamp] = !isBuy ? "1" : "-1";
                 addedBuy = !isBuy ? "1" : "-1";
                 thereWasABuyOrSell = true;    
+                csvAllRows[i][12] = !isBuy ? "1" : "-1";
+            } else {
+                if (!buyDataMap[reSaveTimestamp]) {
+                    csvAllRows[i][12] = "0"
+                } else {
+                    csvAllRows[i][12] = buyDataMap[reSaveTimestamp];
+                }
             }
             dataRow = csvAllRows[i];
         } else {
@@ -287,25 +294,27 @@ function addData(data,res) {
             gainsAndDate[csvAllRows[z][0]] = expon;
     }
 
+    console.log("gainsOnly:" + gainsOnly.length);
+
     let period = 8;
     let emaValues = EMA.calculate({period : period, values : gainsOnly});
     let tripleEmA = TRIX.calculate({period : period, values : gainsOnly});
 
 
-    console.log(emaValues.length);
-    console.log(tripleEmA.length);
+    console.log("emaValues length:" + emaValues.length);
+    console.log("tripleEma length:" + tripleEmA.length);
     let  t = 0;
     for (;t < period + 1; t++) {
         emaValues.unshift(0);
     }
+
     t = 0;
     for (;t < period + 44; t++) {
         tripleEmA.unshift(0);
     }
-    console.log(csvAllRows.length);
-    console.log(emaValues.length);
-    console.log(tripleEmA.length);
-    
+    console.log("csvAllROws length" + csvAllRows.length);
+    console.log("emaValues length" + emaValues.length);
+    console.log("tripleEma length" + tripleEmA.length);    
     
     z = 0;
     for (; z < csvAllRows.length; z++) {
