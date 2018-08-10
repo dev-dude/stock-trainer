@@ -9,7 +9,7 @@ const parse = require('csv-parse');
 const bodyParser = require('body-parser');
 const stockRsi = require('technicalindicators').RSI;
 const EMA = require('technicalindicators').EMA;
-const TRIX = require('technicalindicators').TRIX; 
+const OBV = require('technicalindicators').OBV; 
 const AWS = require('aws-sdk');
 const basicAuth = require('basic-auth-connect');
 
@@ -21,9 +21,11 @@ app.use(basicAuth('stock', 'chart'));
 
 
 const models = [
+
+{"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
+    {"type":"test","model":"ml-P8hYnaHIGjP"},
     {"type":"buy smoothed","model":"ml-5yT1zZ8CE8n"},
     {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
-    {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
     {"type":"1 day control","model":"ml-v2BGXmOj7z3"}
 ];
 AWS.config.update(configFile.awsKeys);
@@ -57,6 +59,7 @@ let testPortfolio = 10000;
 let csvDataMap = {};
 let lastActiveTrade = "-1";
 let addPointsToBuyData = false;
+let desiredBackTestModel = 0;
 
 function parseBuyAndSellData(res) {
     buyData = [];
@@ -285,44 +288,49 @@ function addData(data,res) {
     }
 
     // Exponential Moving average and other post processing 
-    let z = 2
+    let z = 0;
     let gainsOnly = [];
     let gainsAndDate = {};
+    let obv = {close:[],volume:[]};
     for (; z < csvAllRows.length; z++) {
-            gainsOnly.push(parseFloat(csvAllRows[z][12]));
-            let expon = {"gain":csvAllRows[z][12],"expon":0};
-            gainsAndDate[csvAllRows[z][0]] = expon;
+	    if (z >1) {
+	 obv.close.push(parseFloat(csvAllRows[z][4]));
+            obv.volume.push(parseFloat(csvAllRows[z][6]));	
+gainsOnly.push(parseFloat(csvAllRows[z][12]));		  
+	 let expon = {"gain":csvAllRows[z][12],"expon":0};
+    			gainsAndDate[csvAllRows[z][0]] = expon;
+	        } 
     }
 
     console.log("gainsOnly:" + gainsOnly.length);
 
     let period = 8;
     let emaValues = EMA.calculate({period : period, values : gainsOnly});
-    let tripleEmA = TRIX.calculate({period : period, values : gainsOnly});
+    let obvValues = OBV.calculate(obv);
 
 
     console.log("emaValues length:" + emaValues.length);
-    console.log("tripleEma length:" + tripleEmA.length);
+    console.log("obv values  length:" + obvValues.length);
     let  t = 0;
     for (;t < period + 1; t++) {
         emaValues.unshift(0);
     }
 
+
     t = 0;
-    for (;t < period + 44; t++) {
-        tripleEmA.unshift(0);
-    }
+    for (;t < 3; t++) {
+       obvValues.unshift(0);
+    } 
+
     console.log("csvAllROws length" + csvAllRows.length);
     console.log("emaValues length" + emaValues.length);
-    console.log("tripleEma length" + tripleEmA.length);    
     
-    z = 0;
-    for (; z < csvAllRows.length; z++) {
-        if (emaValues[z]) {
-            csvAllRows[z][16] = emaValues[z].toFixed(3);
-            let tripleSmoothed = ((tripleEmA[z] - tripleEmA[z-1]) / tripleEmA[z-1]);
+    z = 1;
+   for (; z < csvAllRows.length;z++) {
+             csvAllRows[z][16] = emaValues[z].toFixed(3);
+            let tripleSmoothed = (parseFloat(obvValues[z] - obvValues[z-1]) / obvValues[z-1]);
             csvAllRows[z][17] = tripleSmoothed.toFixed(2);
-        }
+        
     }
 
     let convertedRows = "";
@@ -538,12 +546,12 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
 
         
         if (backTest) {
-            activeModel = models[0];
+            activeModel = models[desiredBackTestModel];
             lastRow = backTestData[mlPredictCounter].dataOneDayBackData;
         } else {
             activeModel = models[mlPredictCounter];
             if (activeTrade) {
-                activeModel = models[0];
+                activeModel = models[desiredBackTestModel];
             }
         }
         gains = lastRow[7].toString();
@@ -625,11 +633,11 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     if (mlBuy && lastActiveTrade == "-1") {
                         lastActiveTrade = "1";
                         testPortfolio = testPortfolio - totalValuePurchased;
-                        console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+//                        console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
                     } else if (!mlBuy && lastActiveTrade == "1") {
                         lastActiveTrade = "-1";
                         testPortfolio = testPortfolio + totalValuePurchased;
-                        console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+  //                      console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]);
                     }
                 }
 
@@ -664,12 +672,24 @@ app.post('/save', function(req, res) {
     addData(req.body,res);
 });
 
-app.get('/test/backTest', function(req, res) {
+app.get('/test/backTest/:model', function(req, res) {
+    testPortfolio = 10000;
+    if (req.param("model")) {
+        desiredBackTestModel = parseInt(req.param("model"));
+    }  else {
+        desiredBackTestModel = 0;
+    }
     backTest(res);
-});
 
-app.get('/test/simulate', function(req, res) {
-    portfolioSimulation(res);
+});
+app.get('/test/simulate/:model', function(req, res) {
+	testPortfolio = 10000;
+	if (req.param("model")) {
+            desiredBackTestModel = parseInt(req.param("model"));
+   	}  else {
+            desiredBackTestModel = 0;
+        }    
+	portfolioSimulation(res);
 });
 
 app.get('/test/checkBuySellData', function(req, res) {
