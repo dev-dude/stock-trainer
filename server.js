@@ -632,7 +632,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
                     mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
                     let totalValuePurchased = parseFloat(priceData[4] * 40);
-                    console.log(lastRow);
+                    //console.log(lastRow);
                     if (mlBuy && lastActiveTrade == "-1") {
                         lastActiveTrade = "1";
                         testPortfolio = testPortfolio - totalValuePurchased;
