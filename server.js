@@ -19,12 +19,11 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
-
 const models = [
-
-{"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
+    {"type":"testout2","model":"ml-zQssmkHMwMs"},
+    {"type":"testout","model":"ml-UoL1jgSoiR6"},
+    {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
     {"type":"test","model":"ml-P8hYnaHIGjP"},
-    {"type":"buy smoothed","model":"ml-5yT1zZ8CE8n"},
     {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
     {"type":"1 day control","model":"ml-v2BGXmOj7z3"}
 ];
@@ -205,7 +204,7 @@ function addData(data,res) {
                 buyDataMap[reSaveTimestamp] = !isBuy ? "1" : "-1";
                 addedBuy = !isBuy ? "1" : "-1";
                 thereWasABuyOrSell = true;    
-                csvAllRows[i][12] = !isBuy ? "1" : "-1";
+                csvAllRows[i][12] = csvAllRows[i][12] ?  csvAllRows[i][12] : "0";
             } else {
                 if (!buyDataMap[reSaveTimestamp]) {
                     csvAllRows[i][12] = "0"
@@ -230,12 +229,15 @@ function addData(data,res) {
         }
 
         let timestamp = 0;
-        if (csvAllRows[i+1]) {
+        if (addPointsToBuyData && csvAllRows[i+1]) {
             timestamp = moment(csvAllRows[i+1][0]).utc().unix();
+        } else {
+            timestamp = moment(csvAllRows[i][0]).utc().unix();
         }
+
         let buyAction = buyDataMap[timestamp];
         if (buyAction && !thereWasABuyOrSell) {
-            csvAllRows[i][12] = buyAction;
+             csvAllRows[i][12] = buyAction;
         }
 
         let calcMovingAverage = [];
@@ -327,7 +329,7 @@ gainsOnly.push(parseFloat(csvAllRows[z][12]));
     
     z = 1;
    for (; z < csvAllRows.length;z++) {
-             csvAllRows[z][16] = emaValues[z].toFixed(3);
+            csvAllRows[z][16] = emaValues[z].toFixed(3);
             let tripleSmoothed = (parseFloat(obvValues[z] - obvValues[z-1]) / obvValues[z-1]);
             csvAllRows[z][17] = tripleSmoothed.toFixed(2);
         
@@ -630,14 +632,15 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
                     mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
                     let totalValuePurchased = parseFloat(priceData[4] * 40);
+                    console.log(lastRow);
                     if (mlBuy && lastActiveTrade == "-1") {
                         lastActiveTrade = "1";
                         testPortfolio = testPortfolio - totalValuePurchased;
-//                        console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+                        console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
                     } else if (!mlBuy && lastActiveTrade == "1") {
                         lastActiveTrade = "-1";
                         testPortfolio = testPortfolio + totalValuePurchased;
-  //                      console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+                        console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]);
                     }
                 }
 
