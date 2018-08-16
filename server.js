@@ -20,11 +20,12 @@ app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
 const models = [
+    {"type":"testout2","model":"ml-66kGn150veK"},
     {"type":"testout2","model":"ml-zQssmkHMwMs"},
+    {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
     {"type":"testout","model":"ml-UoL1jgSoiR6"},
     {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
     {"type":"test","model":"ml-P8hYnaHIGjP"},
-    {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
     {"type":"1 day control","model":"ml-v2BGXmOj7z3"}
 ];
 AWS.config.update(configFile.awsKeys);
@@ -144,7 +145,7 @@ function downloadCsv(response) {
         headers: {
           'Cookie': 'B=b9ihaitdim360&b=3&s=8m'
         },
-        uri: 'http://query1.finance.yahoo.com/v7/finance/download/SPY?period1=946699258&period2=9929548208&interval=1d&events=history&crumb=HbK4LWmmHjG',
+        uri: 'http://query1.finance.yahoo.com/v7/finance/download/SPY?period1=946699258&period2=15341894997&interval=1d&events=history&crumb=HbK4LWmmHjG',
         method: 'GET'
       }, function(err, res, body) {     
         console.log(err);
@@ -231,8 +232,8 @@ function addData(data,res) {
         let timestamp = 0;
         if (addPointsToBuyData && csvAllRows[i+1]) {
             timestamp = moment(csvAllRows[i+1][0]).utc().unix();
-        } else {
-            timestamp = moment(csvAllRows[i][0]).utc().unix();
+        } else if (csvAllRows[i+1]){
+            timestamp = moment(csvAllRows[i+1][0]).utc().unix();
         }
 
         let buyAction = buyDataMap[timestamp];
@@ -401,10 +402,11 @@ gainsOnly.push(parseFloat(csvAllRows[z][12]));
 function portfolioSimulation(res) {
     let test = true;
     if (test) {
-        csvRowsCopySimulation = csvAllRows.slice(4600,4700);
+        csvRowsCopySimulation = csvAllRows.slice(csvAllRows.length - 100,csvAllRows.length - 1);
     } else {
         csvRowsCopySimulation = csvAllRows.slice(15,csvAllRows.length - 1);
     }
+   console.log("testPortfolio " + testPortfolio + " short " + shortPrice);
     let p = new Promise(function(resolve, reject) {
         mlPredictCounter = 0;
         totalPredictions = [];
@@ -521,6 +523,9 @@ function backTest(res) {
     });
 }
 
+let shortPrice = 0;
+let sharesPurchased;
+
 function mlPredict(resolve,lastRow,backTest,activeTrade) {
     if (
         !backTest && mlPredictCounter < models.length || 
@@ -631,15 +636,26 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 if (activeTrade) {
                     let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
                     mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
-                    let totalValuePurchased = parseFloat(priceData[4] * 40);
+                    let testPortfolioCopy = testPortfolio;
+
                     //console.log(lastRow);
                     if (mlBuy && lastActiveTrade == "-1") {
+                        sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                        totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
+			if (shortPrice != 0) {
+			   let priceDiff = shortPrice - parseFloat(priceData[4]);
+ 			   console.log("short price diff :" + priceDiff);
+			   testPortfolio += (priceDiff * sharesPurchased); 
+			}
                         lastActiveTrade = "1";
                         testPortfolio = testPortfolio - totalValuePurchased;
                         console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
                     } else if (!mlBuy && lastActiveTrade == "1") {
                         lastActiveTrade = "-1";
+                        sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                        totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                         testPortfolio = testPortfolio + totalValuePurchased;
+			shortPrice = parseFloat(priceData[4]);
                         console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]);
                     }
                 }
@@ -686,6 +702,7 @@ app.get('/test/backTest/:model', function(req, res) {
 
 });
 app.get('/test/simulate/:model', function(req, res) {
+        shortPrice = 0;
 	testPortfolio = 10000;
 	if (req.param("model")) {
             desiredBackTestModel = parseInt(req.param("model"));
