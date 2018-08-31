@@ -20,7 +20,7 @@ app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
 const models = [
-    {"type":"testout2","model":"ml-66kGn150veK"},
+    {"type":"testout2","model":"ml-6NIDATbNrFz"},
     {"type":"testout2","model":"ml-zQssmkHMwMs"},
     {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
     {"type":"testout","model":"ml-UoL1jgSoiR6"},
@@ -83,6 +83,29 @@ function parseBuyAndSellData(res) {
     });
 }
 
+let headerMap;
+let customRows;
+let customCount = 0;
+function parseCustom(resolve) {
+   customCount = 0;
+   customRows = [];
+   fs.createReadStream("./custom.csv")
+    .pipe(parse({delimiter: ','}))
+    .on('data', function(csvrow) {
+        if (customCount  == 0) {
+             headerMap = csvrow; 
+        } else {
+            customRows.push(csvrow);
+	}
+       customCount++;
+    })
+    .on('end',function() {
+      resolve();
+    });
+}
+
+
+
 function parseData(res) {
     count = 0;
     fs.createReadStream("./test.csv")
@@ -134,7 +157,14 @@ function parseData(res) {
 
       intialRun = false;
       firstRunData = {csvData:csvData,rsiData:sendRsiData,buyDataAndDateOnly:buyDataAndDateOnly};
-      res.send(firstRunData);
+      
+       //Load custom data
+        let p = new Promise(function(resolve, reject) {
+            parseCustom(resolve);
+	});  
+        p.then(function() {
+	       res.send(firstRunData);
+        });
     });
 }
 
@@ -401,12 +431,18 @@ gainsOnly.push(parseFloat(csvAllRows[z][12]));
 
 function portfolioSimulation(res) {
     let test = true;
+    let custom = true;
+    let activeDataObj = csvAllRows;
+    if (custom) { 
+       activeDataObj = customRows;	   
+    } 
+
     if (test) {
-        csvRowsCopySimulation = csvAllRows.slice(csvAllRows.length - 100,csvAllRows.length - 1);
+        csvRowsCopySimulation = activeDataObj.slice(activeDataObj.length - 50,activeDataObj.length - 1);
     } else {
-        csvRowsCopySimulation = csvAllRows.slice(15,csvAllRows.length - 1);
+        csvRowsCopySimulation = activeDataObj.slice(15,activeDataObj.length - 1);
     }
-   console.log("testPortfolio " + testPortfolio + " short " + shortPrice);
+ console.log("testPortfolio " + testPortfolio + " short " + shortPrice);
     let p = new Promise(function(resolve, reject) {
         mlPredictCounter = 0;
         totalPredictions = [];
@@ -591,8 +627,15 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
 
             }
         };
-
-        //console.log(params);
+      
+        if (custom) {
+           dataObj = {};
+           let headerCount = 0; 
+           headerMap.forEach(function(headerItem) {
+             dataObj[headerItem] = lastRow[headerCount].toString(); 
+ 	  });
+          params.Record = dataObj;
+	}
 
         ml.predict(params, function(err, data) {
             if (err) {
@@ -602,11 +645,11 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 let obj = {};
 
         
-                obj.buy = data["Prediction"]["predictedScores"][1].toFixed(2);
+                obj.buy = data["Prediction"]["predictedScores"][1].toFixed(3);
                 if (data["Prediction"]["predictedScores"][-1]) {
-                    obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(2);
+                    obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(3);
                 }
-                obj.hold = data["Prediction"]["predictedScores"][0].toFixed(2);
+                obj.hold = data["Prediction"]["predictedScores"][0].toFixed(3);
                 obj.type = activeModel.type;
                 totalPredictions.push(obj);
                 let mlBuy;
@@ -638,7 +681,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
                     let testPortfolioCopy = testPortfolio;
 
-                    //console.log(lastRow);
+//                    console.log(lastRow);
                     if (mlBuy && lastActiveTrade == "-1") {
                         sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
                         totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
