@@ -20,13 +20,14 @@ app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
 const models = [
-    {"type":"testout2","model":"ml-6NIDATbNrFz"},
+    {"type":"custom","model":"ml-1qeN5IJW68d"}
+   /* {"type":"testout2","model":"ml-6NIDATbNrFz"},
     {"type":"testout2","model":"ml-zQssmkHMwMs"},
     {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
     {"type":"testout","model":"ml-UoL1jgSoiR6"},
     {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
     {"type":"test","model":"ml-P8hYnaHIGjP"},
-    {"type":"1 day control","model":"ml-v2BGXmOj7z3"}
+    {"type":"1 day control","model":"ml-v2BGXmOj7z3"}*/
 ];
 AWS.config.update(configFile.awsKeys);
 
@@ -60,6 +61,7 @@ let csvDataMap = {};
 let lastActiveTrade = "-1";
 let addPointsToBuyData = false;
 let desiredBackTestModel = 0;
+let globalCustom = true;
 
 function parseBuyAndSellData(res) {
     buyData = [];
@@ -396,6 +398,20 @@ gainsOnly.push(parseFloat(csvAllRows[z][12]));
     }
 
    let lastRow = csvAllRows[csvAllRows.length - 1]; 
+
+
+   if (globalCustom) {
+
+     customRows.forEach(function(currRow) {
+         if (moment(data.time).format("M/D/Y") == currRow[0]) {
+             console.log("found");
+             dataRow = currRow;
+             return true;
+         }
+     });
+     console.log(dataRow);
+     console.log(data.time);
+   }
    
    let p = new Promise(function(resolve, reject) {
        mlPredictCounter = 0;
@@ -431,9 +447,8 @@ gainsOnly.push(parseFloat(csvAllRows[z][12]));
 
 function portfolioSimulation(res) {
     let test = true;
-    let custom = true;
     let activeDataObj = csvAllRows;
-    if (custom) { 
+    if (globalCustom) { 
        activeDataObj = customRows;	   
     } 
 
@@ -628,14 +643,20 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
             }
         };
       
-        if (custom) {
+        if (globalCustom) {
+            console.log("custom");
            dataObj = {};
            let headerCount = 0; 
-           headerMap.forEach(function(headerItem) {
-             dataObj[headerItem] = lastRow[headerCount].toString(); 
- 	  });
+           //console.log(lastRow);
+           headerMap.forEach(function(headerItem) {  
+               if (headerCount != 0 && headerCount != 1) {
+                     dataObj[headerItem] = lastRow[headerCount].toString();
+               }
+               headerCount++; 
+ 	       });
           params.Record = dataObj;
-	}
+          //console.log(params.Record);
+	    }
 
         ml.predict(params, function(err, data) {
             if (err) {
@@ -678,28 +699,34 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
 
                 if (activeTrade) {
                     let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
+                    let priceIndex = 4;
+                    if (globalCustom) {
+                        priceIndex = 1;
+                    }
+
+
                     mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
                     let testPortfolioCopy = testPortfolio;
 
 //                    console.log(lastRow);
                     if (mlBuy && lastActiveTrade == "-1") {
-                        sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
-                        totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
+                        sharesPurchased = Math.floor(10000 / parseFloat(priceData[priceIndex]));
+                        totalValuePurchased = parseFloat(priceData[priceIndex] * sharesPurchased);
 			if (shortPrice != 0) {
-			   let priceDiff = shortPrice - parseFloat(priceData[4]);
+			   let priceDiff = shortPrice - parseFloat(priceData[priceIndex]);
  			   console.log("short price diff :" + priceDiff);
 			   testPortfolio += (priceDiff * sharesPurchased); 
 			}
                         lastActiveTrade = "1";
                         testPortfolio = testPortfolio - totalValuePurchased;
-                        console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+                        console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[priceIndex]);
                     } else if (!mlBuy && lastActiveTrade == "1") {
                         lastActiveTrade = "-1";
-                        sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
-                        totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
+                        sharesPurchased = Math.floor(10000 / parseFloat(priceData[priceIndex]));
+                        totalValuePurchased = parseFloat(priceData[priceIndex] * sharesPurchased);
                         testPortfolio = testPortfolio + totalValuePurchased;
-			shortPrice = parseFloat(priceData[4]);
-                        console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+			shortPrice = parseFloat(priceData[priceIndex]);
+                        console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[priceIndex]);
                     }
                 }
 
