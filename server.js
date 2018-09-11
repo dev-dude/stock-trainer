@@ -20,7 +20,7 @@ app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
 const models = [
-    {"type":"bond3","model":"ml-38C1lnqu3OO"},
+    {"type":"bond3","model":"ml-thttkvqv3TS"},
     {"type":"bond2","model":"ml-3p4OwdMnRGb"},
     {"type":"bond","model":"ml-J7kkZQOKASV"},
     {"type":"exponback","model":"ml-KZbmaAZxeej"},
@@ -202,7 +202,7 @@ function parseData(res) {
            parseDataPromise(resolve,"BND",0);
         });  
         let p2 = new Promise(function(resolve, reject) {
-            parseDataPromise(resolve,"TLT",1);
+            parseDataPromise(resolve,"UUP",1);
          });
         Promise.all([p,p2]).then(function() {
             intialRun = false;
@@ -235,8 +235,8 @@ function downloadCsv(response,type) {
                 console.log("parsing BND");
                 downloadCsv(response,"BND");
               } else if (type == "BND") {
-                console.log("parsing TLT");
-                downloadCsv(response,"TLT");
+                console.log("parsing UUP");
+                downloadCsv(response,"UUP");
               } else {
                 console.log("processing data");
  		        parseBuyAndSellData(response);
@@ -554,7 +554,7 @@ function portfolioSimulation(res) {
     } 
 
     if (test) {
-        csvRowsCopySimulation = activeDataObj.slice(activeDataObj.length - 50,activeDataObj.length - 1);
+        csvRowsCopySimulation = activeDataObj.slice(activeDataObj.length - 100,activeDataObj.length - 1);
     } else {
         csvRowsCopySimulation = activeDataObj.slice(15,activeDataObj.length - 1);
     }
