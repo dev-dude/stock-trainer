@@ -677,6 +677,7 @@ function backTest(res) {
 
 let shortPrice = 0;
 let sharesPurchased;
+let startSimulation = true;
 
 function mlPredict(resolve,lastRow,backTest,activeTrade) {
     if (
@@ -807,7 +808,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     let testPortfolioCopy = testPortfolio;
 
 //                    console.log(lastRow);
-                    if (mlBuy && lastActiveTrade == "-1") {
+                    if (mlBuy && (startSimulation || lastActiveTrade == "-1")) {
                         sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
                         totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
 			if (shortPrice != 0) {
@@ -816,9 +817,10 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
 			   testPortfolio += (priceDiff * sharesPurchased); 
 			}
                         lastActiveTrade = "1";
+                        startSimulation = false;
                         testPortfolio = testPortfolio - totalValuePurchased;
                         console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
-                    } else if (!mlBuy && lastActiveTrade == "1") {
+                    } else if (!startSimulation && !mlBuy && lastActiveTrade == "1") {
                         lastActiveTrade = "-1";
                         sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
                         totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
@@ -871,6 +873,7 @@ app.get('/test/backTest/:model', function(req, res) {
 
 });
 app.get('/test/simulate/:model', function(req, res) {
+        startSimulation = true;
         shortPrice = 0;
 	testPortfolio = 10000;
 	if (req.param("model")) {
