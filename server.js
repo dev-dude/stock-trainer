@@ -20,6 +20,9 @@ app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
 const models = [
+    {"type":"bond2","model":"ml-3p4OwdMnRGb"},
+    {"type":"bond","model":"ml-J7kkZQOKASV"},
+    {"type":"exponback","model":"ml-KZbmaAZxeej"},
     {"type":"testout2","model":"ml-6NIDATbNrFz"},
     {"type":"testout2","model":"ml-zQssmkHMwMs"},
     {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
@@ -102,13 +105,39 @@ function parseCustom(resolve) {
     .on('end',function() {
       resolve();
     });
-}
+} 
+let secondSymbolAllRows = [];
+let secondSymbolPriceData = [];
+let secondSymbolCsvData = [];
+let secondSymbolCsvDataMap = {};
+function parseDataPromise(resolve,symbol) {
+   count = 0;
+   fs.createReadStream("./"+symbol+".csv")
+    .pipe(parse({delimiter: ','}))
+    .on('data', function(csvrow) {
 
+        if (intialRun) {
+            secondSymbolAllRows.push(csvrow);
+        }
+        let timeStamp = moment(csvrow[0]).utc().unix();
+        let formattedTimeStamp = moment(parseInt(timeStamp.toString()+"000")).format("M/D/Y");
+        let csvObj = [timeStamp*1000,parseFloat(csvrow[4]),count,formattedTimeStamp];
+        if (count > 0) {
+            secondSymbolCsvDataMap[formattedTimeStamp] = csvrow;
+            secondSymbolCsvData.push(csvObj);
+            secondSymbolPriceData.push(parseFloat(csvrow[4]));
+        }
+        count++;
+    })
+    .on('end',function() {  
+         resolve();
+    });
+}
 
 
 function parseData(res) {
     count = 0;
-    fs.createReadStream("./test.csv")
+    fs.createReadStream("./SPY.csv")
     .pipe(parse({delimiter: ','}))
     .on('data', function(csvrow) {
         
@@ -155,27 +184,28 @@ function parseData(res) {
        
       }
 
-      intialRun = false;
-      firstRunData = {csvData:csvData,rsiData:sendRsiData,buyDataAndDateOnly:buyDataAndDateOnly};
-      
+
+          
        //Load custom data
         let p = new Promise(function(resolve, reject) {
-            parseCustom(resolve);
+           parseDataPromise(resolve,"BND");
 	});  
         p.then(function() {
-	       res.send(firstRunData);
+            intialRun = false;
+            firstRunData = {csvData:csvData,rsiData:sendRsiData,buyDataAndDateOnly:buyDataAndDateOnly,secondSymbolCsvData:secondSymbolCsvData};
+	    res.send(firstRunData);
         });
     });
 }
 
-function downloadCsv(response) {
+function downloadCsv(response,type) {
     console.log("download csv");
-    let dest = "./test.csv";
+    let dest = "./"+type+".csv";
     request.get({
         headers: {
           'Cookie': 'B=b9ihaitdim360&b=3&s=8m'
         },
-        uri: 'http://query1.finance.yahoo.com/v7/finance/download/SPY?period1=946699258&period2=15341894997&interval=1d&events=history&crumb=HbK4LWmmHjG',
+        uri: 'http://query1.finance.yahoo.com/v7/finance/download/'+type+'?period1=1176235388&period2=15341894997&interval=1d&events=history&crumb=HbK4LWmmHjG',
         method: 'GET'
       }, function(err, res, body) {     
         console.log(err);
@@ -186,7 +216,13 @@ function downloadCsv(response) {
             }
             //console.log(res);
             console.log("The file was saved!");
-            parseBuyAndSellData(response);
+              if (type == "SPY") {
+                console.log("parsing BND");
+     		downloadCsv(response,"BND");
+              } else {
+                console.log("processing data");
+ 		parseBuyAndSellData(response);
+	      } 
         }); 
     });
 }
@@ -216,6 +252,10 @@ function addData(data,res) {
             csvAllRows[i][15] = "Buys Avg";
             csvAllRows[i][16] = "Expon Moving Avg";
             csvAllRows[i][17] = "Triple Expon Smoothed";
+            csvAllRows[i][18] = "Bond Gains";
+	    csvAllRows[i][19] = "Bond Vol";
+            csvAllRows[i][20] = "Bond Expon Avg";
+            csvAllRows[i][21] = "Bond Triple";
             continue;
         }
 
@@ -257,6 +297,10 @@ function addData(data,res) {
             csvAllRows[i][15] = "";
             csvAllRows[i][16] = "";
             csvAllRows[i][17] = "";
+	    csvAllRows[i][18] = "";
+            csvAllRows[i][19] = "";
+            csvAllRows[i][20] = "";
+            csvAllRows[i][21] = "";
         }
 
         let timestamp = 0;
@@ -275,8 +319,15 @@ function addData(data,res) {
         if (i > 1) {
             let singleDayVolume = ((csvAllRows[i][6] - csvAllRows[i-1][6]) / csvAllRows[i-1][6]);
             let singleDayGains = ((csvAllRows[i][5] - csvAllRows[i-1][5]) / csvAllRows[i-1][5]);
-            csvAllRows[i][7] = singleDayGains.toFixed(2); 
-            csvAllRows[i][11] = singleDayVolume.toFixed(2)
+            let singleDayVolumeBond = ((secondSymbolAllRows[i][6] - secondSymbolAllRows[i-1][6]) / secondSymbolAllRows[i-1][6]);
+	    let singleDayGainsBond = ((secondSymbolAllRows[i][5] - secondSymbolAllRows[i-1][5]) / secondSymbolAllRows[i-1][5]);
+  	    
+	    csvAllRows[i][7] = singleDayGains.toFixed(2); 
+            csvAllRows[i][11] = singleDayVolume.toFixed(2);
+            csvAllRows[i][18] = singleDayGainsBond.toFixed(3);
+            csvAllRows[i][19] = singleDayVolumeBond.toFixed(2);
+
+
             if (i > 2) {
                 let multiDayGains = ((csvAllRows[i][5] - csvAllRows[i-2][5]) / csvAllRows[i-2][5]);
                 csvAllRows[i][8] = multiDayGains.toFixed(2);
@@ -325,14 +376,20 @@ function addData(data,res) {
     let gainsOnly = [];
     let gainsAndDate = {};
     let obv = {close:[],volume:[]};
+    let obvBond = {close:[],volume:[]};
+    let bondGains = [];
     for (; z < csvAllRows.length; z++) {
 	    if (z >1) {
-	 obv.close.push(parseFloat(csvAllRows[z][4]));
-            obv.volume.push(parseFloat(csvAllRows[z][6]));	
-gainsOnly.push(parseFloat(csvAllRows[z][12]));		  
-	 let expon = {"gain":csvAllRows[z][12],"expon":0};
-    			gainsAndDate[csvAllRows[z][0]] = expon;
-	        } 
+
+                obvBond.close.push(parseFloat(secondSymbolAllRows[z][4]));
+		obvBond.volume.push(parseFloat(secondSymbolAllRows[z][6]));
+                obv.close.push(parseFloat(csvAllRows[z][4]));
+                obv.volume.push(parseFloat(csvAllRows[z][6]));	
+                gainsOnly.push(parseFloat(csvAllRows[z][7]));		  
+	        bondGains.push(parseFloat(csvAllRows[z][18]));
+               let expon = {"gain":csvAllRows[z][7],"expon":0};
+    	        gainsAndDate[csvAllRows[z][0]] = expon;
+	     } 
     }
 
     console.log("gainsOnly:" + gainsOnly.length);
@@ -340,19 +397,25 @@ gainsOnly.push(parseFloat(csvAllRows[z][12]));
     let period = 8;
     let emaValues = EMA.calculate({period : period, values : gainsOnly});
     let obvValues = OBV.calculate(obv);
-
+    let bondEmaValues = EMA.calculate({period : period, values : bondGains});
+    let bondObvValues = OBV.calculate(obvBond);
 
     console.log("emaValues length:" + emaValues.length);
     console.log("obv values  length:" + obvValues.length);
+    console.log("bondvalues: " + bondEmaValues.length);
+    console.log("obv values: " + bondObvValues.length);
+    console.log(bondEmaValues[100]);
+   
     let  t = 0;
     for (;t < period + 1; t++) {
         emaValues.unshift(0);
+        bondEmaValues.unshift(0);
     }
-
 
     t = 0;
     for (;t < 3; t++) {
        obvValues.unshift(0);
+       bondObvValues.unshift(0);
     } 
 
     console.log("csvAllROws length" + csvAllRows.length);
@@ -360,10 +423,12 @@ gainsOnly.push(parseFloat(csvAllRows[z][12]));
     
     z = 1;
    for (; z < csvAllRows.length;z++) {
+            csvAllRows[z][20]= bondEmaValues[z].toFixed(3);
             csvAllRows[z][16] = emaValues[z].toFixed(3);
             let tripleSmoothed = (parseFloat(obvValues[z] - obvValues[z-1]) / obvValues[z-1]);
             csvAllRows[z][17] = tripleSmoothed.toFixed(2);
-        
+            let tripleSmoothedBond = (parseFloat(bondObvValues[z] - bondObvValues[z-1]) / bondObvValues[z-1]);
+            csvAllRows[z][21] = tripleSmoothedBond.toFixed(2);       
     }
 
     let convertedRows = "";
@@ -372,7 +437,7 @@ gainsOnly.push(parseFloat(csvAllRows[z][12]));
 
     convertedRows += csvAllRows[x][0] + "," +  csvAllRows[x][7] + "," + csvAllRows[x][8] + "," + csvAllRows[x][9] +
      "," + csvAllRows[x][10] + "," + csvAllRows[x][11] + "," + csvAllRows[x][12] + ","
-      + csvAllRows[x][13] + "," + csvAllRows[x][14] + "," + csvAllRows[x][15] + "," +  csvAllRows[x][16] + "," +  csvAllRows[x][17]  +"\n";
+      + csvAllRows[x][13] + "," + csvAllRows[x][14] + "," + csvAllRows[x][15] + "," +  csvAllRows[x][16] + "," +  csvAllRows[x][17]  + "," + csvAllRows[x][18] + "," +  csvAllRows[x][19] + "," + csvAllRows[x][20] + "," + csvAllRows[x][21] + "\n";
    }
 
    // Write Buy Data
@@ -431,7 +496,7 @@ gainsOnly.push(parseFloat(csvAllRows[z][12]));
 
 function portfolioSimulation(res) {
     let test = true;
-    let custom = true;
+    let custom = false;
     let activeDataObj = csvAllRows;
     if (custom) { 
        activeDataObj = customRows;	   
@@ -623,11 +688,15 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 "SMA Gains Avg": smaGainAverage,
                 "Buys Avg": buysAverage,
                 "Expon Moving Avg": exponAvg,
-                "Triple Expon Smoothed": tripleExponSmooth
-
+                "Triple Expon Smoothed": tripleExponSmooth,
+                "Bond Gains": lastRow[18].toString(),
+                  "Bond Vol":lastRow[19].toString(),
+ 		"Bond Expon Avg":lastRow[20].toString(),
+ 		"Bond Triple":lastRow[21].toString()
             }
         };
       
+  	/*
         if (custom) {
            dataObj = {};
            let headerCount = 0; 
@@ -636,6 +705,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
  	  });
           params.Record = dataObj;
 	}
+	*/
 
         ml.predict(params, function(err, data) {
             if (err) {
@@ -714,6 +784,10 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
 }
 
 app.get('/download/:editing', function(req, res) {
+    secondSymbolAllRows = [];
+    secondSymbolPriceData = [];
+    secondSymbolCsvData = [];
+    secondSymbolCsvDataMap = {};
     csvData=[];
     priceData=[];
     count = 0;
@@ -728,7 +802,7 @@ app.get('/download/:editing', function(req, res) {
         addPointsToBuyData = true;
     }
     console.log("Editing " + addPointsToBuyData);
-    downloadCsv(res);
+    downloadCsv(res,"SPY");
 });
 app.post('/save', function(req, res) {
     addData(req.body,res);

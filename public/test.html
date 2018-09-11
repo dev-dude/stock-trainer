@@ -30,7 +30,7 @@
       // Create the chart
 
 
-
+console.log(data);
     let chart = Highcharts.stockChart('container', {
   
   
@@ -39,7 +39,7 @@
           },
           yAxis: [{ // Primary yAxis
                 labels: {
-                    format: 'a',
+                    format: 'spy',
                     style: {
                         color: Highcharts.getOptions().colors[2]
                     }
@@ -55,7 +55,20 @@
             }, { 
             gridLineWidth: 0,
             title: {
-                text: 'b',
+                text: 'rsi',
+                style: {
+                    color: Highcharts.getOptions().colors[0]
+                }
+            },
+            labels: {
+                format: '{value}',
+                style: {
+                    color: Highcharts.getOptions().colors[0]
+                }
+            }}, { 
+            gridLineWidth: 0,
+            title: {
+                text: 'BND',
                 style: {
                     color: Highcharts.getOptions().colors[0]
                 }
@@ -66,8 +79,8 @@
                     color: Highcharts.getOptions().colors[0]
                 }
             }
-        }
-
+          }
+      
     ],
   
           title: {
@@ -108,7 +121,7 @@
                 }
             },
           series: [{
-              name: 'ticker',
+              name: 'spy',
               yAxis:0,
               data: data.csvData,
               tooltip: {
@@ -122,6 +135,13 @@
               dashStyle: 'longdash',
               color: 'grey',
               data: data.rsiData,
+              tooltip: {
+                  valueDecimals: 2
+              }
+          },{
+              name: 'bnd',
+              yAxis:2,
+              data: data.secondSymbolCsvData,
               tooltip: {
                   valueDecimals: 2
               }
