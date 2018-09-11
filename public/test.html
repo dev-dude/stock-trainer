@@ -79,6 +79,21 @@ console.log(data);
                     color: Highcharts.getOptions().colors[0]
                 }
             }
+          },
+          { 
+            gridLineWidth: 0,
+            title: {
+                text: 'TLT',
+                style: {
+                    color: Highcharts.getOptions().colors[0]
+                }
+            },
+            labels: {
+                format: '{value}',
+                style: {
+                    color: Highcharts.getOptions().colors[0]
+                }
+            }
           }
       
     ],
@@ -142,6 +157,13 @@ console.log(data);
               name: 'bnd',
               yAxis:2,
               data: data.secondSymbolCsvData,
+              tooltip: {
+                  valueDecimals: 2
+              }
+          },{
+              name: 'TLT',
+              yAxis:2,
+              data: data.thirdSymbolCsvData,
               tooltip: {
                   valueDecimals: 2
               }
