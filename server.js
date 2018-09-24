@@ -20,7 +20,8 @@ app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
 const models = [
-    {"type":"bond3","model":"ml-thttkvqv3TS"},
+       {"type":"buyssells","model":"ml-QdqmZhvuMaI"},
+    {"type":"bond3","model":"ml-Kc8g54IxIQ0"},
     {"type":"bond2","model":"ml-3p4OwdMnRGb"},
     {"type":"bond","model":"ml-J7kkZQOKASV"},
     {"type":"exponback","model":"ml-KZbmaAZxeej"},
@@ -188,7 +189,7 @@ function parseData(res) {
             let max = Math.max.apply(null, last14);
             let min = Math.min.apply(null, last14);
             let stochRSI = (last14[last14.length-1] - min) / (max - min);
-            stockRSIValues.push(stochRSI.toFixed(2));
+            stockRSIValues.push(stochRSI.toFixed(3));
             let roundNumber = Math.round(stochRSI * 10) / 10;
             sendRsiData.push([csvData[z+14][0],roundNumber]);
         }
@@ -348,20 +349,21 @@ function addData(data,res) {
             let tltDayVolumeBond = ((symbols[1].secondSymbolAllRows[i][6] - symbols[1].secondSymbolAllRows[i-1][6]) / symbols[1].secondSymbolAllRows[i-1][6]);
 	        let tltDayGainsBond = ((symbols[1].secondSymbolAllRows[i][5] - symbols[1].secondSymbolAllRows[i-1][5]) / symbols[1].secondSymbolAllRows[i-1][5]);
   	    
-	        csvAllRows[i][7] = singleDayGains.toFixed(2); 
-            csvAllRows[i][11] = singleDayVolume.toFixed(2);
+	    csvAllRows[i][7] = singleDayGains.toFixed(3); 
+            // Set buy and sell
+	    csvAllRows[i][11] = singleDayVolume.toFixed(3);
             csvAllRows[i][18] = singleDayGainsBond.toFixed(3);
-            csvAllRows[i][19] = singleDayVolumeBond.toFixed(2);
+            csvAllRows[i][19] = singleDayVolumeBond.toFixed(3);
            
             csvAllRows[i][22] = tltDayGainsBond.toFixed(3);
-            csvAllRows[i][23] = tltDayVolumeBond.toFixed(2);
+            csvAllRows[i][23] = tltDayVolumeBond.toFixed(3);
 
             if (i > 2) {
                 let multiDayGains = ((csvAllRows[i][5] - csvAllRows[i-2][5]) / csvAllRows[i-2][5]);
-                csvAllRows[i][8] = multiDayGains.toFixed(2);
+                csvAllRows[i][8] = multiDayGains.toFixed(3);
                 if (i > 3) {
                     let smaGains = ((parseFloat(csvAllRows[i][7]) + parseFloat(csvAllRows[i-1][7]) +  parseFloat(csvAllRows[i-2][7])) / 3);
-                    csvAllRows[i][9] = smaGains.toFixed(2);
+                    csvAllRows[i][9] = smaGains.toFixed(3);
                 }
     
             }
@@ -391,10 +393,10 @@ function addData(data,res) {
             buyAverage = buyTotal / 6;
 
             let smaGains = ((parseFloat(csvAllRows[i][7]) + parseFloat(csvAllRows[i-1][7]) +  parseFloat(csvAllRows[i-2][7])) / 3);
-            csvAllRows[i][9] = smaGains.toFixed(2);
+            csvAllRows[i][9] = smaGains.toFixed(3);
 
-            csvAllRows[i][13] = stochRsiAverage.toFixed(2);
-            csvAllRows[i][14] = smaGainAverage.toFixed(2);
+            csvAllRows[i][13] = stochRsiAverage.toFixed(3);
+            csvAllRows[i][14] = smaGainAverage.toFixed(3);
             csvAllRows[i][15] = buyAverage.toFixed(3)
         }
     }
@@ -469,19 +471,37 @@ function addData(data,res) {
 
             csvAllRows[z][16] = emaValues[z].toFixed(3);
             let tripleSmoothed = (parseFloat(obvValues[z] - obvValues[z-1]) / obvValues[z-1]);
-            csvAllRows[z][17] = tripleSmoothed.toFixed(2);
+            csvAllRows[z][17] = tripleSmoothed.toFixed(3);
            
             let tripleSmoothedBond = (parseFloat(bondObvValues[z] - bondObvValues[z-1]) / bondObvValues[z-1]);
-            csvAllRows[z][21] = tripleSmoothedBond.toFixed(2);  
+            csvAllRows[z][21] = tripleSmoothedBond.toFixed(3);  
 
             let tripleSmoothedTrs = (parseFloat(trsObvValues[z] - trsObvValues[z-1]) / trsObvValues[z-1]);
-            csvAllRows[z][25] = tripleSmoothedTrs.toFixed(2);       
+            csvAllRows[z][25] = tripleSmoothedTrs.toFixed(3);       
     }
 
     let convertedRows = "";
-    let x = 0;
-   for (; x < csvAllRows.length; x++) {
+  let x = 0;
+  for (; x < csvAllRows.length; x++) {
+            // Set buy and sell
 
+            if (true && csvAllRows[x]) {
+                
+                if (csvAllRows[x][7] >= 0) {
+                   if (csvAllRows[x-2]) {
+                    csvAllRows[x-2][12] = "1";
+                   }
+                } else {
+                      if (csvAllRows[x-2]) {
+                    csvAllRows[x-2][12] = "-1";
+                    }
+                }
+            }
+  }
+   x = 0;
+   for (; x < csvAllRows.length; x++) {
+            // Set buy and sell
+            
     convertedRows += csvAllRows[x][0] + "," +  csvAllRows[x][7] + "," + csvAllRows[x][8] + "," + csvAllRows[x][9] + "," 
       + csvAllRows[x][10] + "," + csvAllRows[x][11] + "," + csvAllRows[x][12] + ","
       + csvAllRows[x][13] + "," + csvAllRows[x][14] + "," + csvAllRows[x][15] + "," +  csvAllRows[x][16] + ","
@@ -490,7 +510,6 @@ function addData(data,res) {
       + csvAllRows[x][25] 
       + "\n";
    }
-
    // Write Buy Data
    let buyDataCsvOut = "";
    if (addPointsToBuyData) {
@@ -767,7 +786,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
             if (err) {
                 console.log(err, err.stack);
             } else {     
-                //console.log(data);
+//                console.log(data);
                 let obj = {};
 
         
@@ -775,8 +794,10 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 if (data["Prediction"]["predictedScores"][-1]) {
                     obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(3);
                 }
-                obj.hold = data["Prediction"]["predictedScores"][0].toFixed(3);
-                obj.type = activeModel.type;
+               
+              // obj.hold = data["Prediction"]["predictedScores"][0].toFixed(3);
+               obj.hold = 0; 
+               obj.type = activeModel.type;
                 totalPredictions.push(obj);
                 let mlBuy;
                 if (backTest) {
@@ -811,10 +832,10 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     if (mlBuy && (startSimulation || lastActiveTrade == "-1")) {
                         sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
                         totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
-			if (shortPrice != 0) {
+			if (true && shortPrice != 0) {
 			   let priceDiff = shortPrice - parseFloat(priceData[4]);
  			   console.log("short price diff :" + priceDiff);
-			   testPortfolio += (priceDiff * sharesPurchased); 
+           		   testPortfolio += (priceDiff * sharesPurchased); 
 			}
                         lastActiveTrade = "1";
                         startSimulation = false;
