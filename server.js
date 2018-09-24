@@ -573,7 +573,7 @@ function portfolioSimulation(res) {
     } 
 
     if (test) {
-        csvRowsCopySimulation = activeDataObj.slice(activeDataObj.length - 100,activeDataObj.length - 1);
+        csvRowsCopySimulation = activeDataObj.slice(activeDataObj.length - 200,activeDataObj.length - 100);
     } else {
         csvRowsCopySimulation = activeDataObj.slice(15,activeDataObj.length - 1);
     }
@@ -771,7 +771,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
  	  });
 
         let p2 = new Promise(function(resolve, reject) {
-            if (activeTrade) {
+            if (false) {
                 params.MLModelId = models[desiredBackTestModel + 1].model;
                 mlPredictAmazon(resolve,params);
             } else {     
@@ -812,7 +812,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
 
                 mlBuy1 = parseFloat(obj.buy) > parseFloat(obj.sell);
-                if (true) {
+                if (false) {
                     mlBuy2 = parseFloat(values[1].buy) > parseFloat(values[1].sell);
                     let decision = 0;
                     if (lastActiveTrade == "1" && !mlBuy1) {
@@ -834,12 +834,13 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 }
             
                 if (mlBuy && (startSimulation || lastActiveTrade == "-1")) {
-                    sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                    //sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                    sharesPurchased = 38
                     totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     if (true && shortPrice != 0) {
-                       //let priceDiff = shortPrice - parseFloat(priceData[4]);
-                       //console.log("short price diff :" + priceDiff);
-                       //testPortfolio += (priceDiff * sharesPurchased); 
+                        let priceDiff = shortPrice - parseFloat(priceData[4]);
+                        console.log("short price diff :" + priceDiff);
+                        testPortfolio += (priceDiff * sharesPurchased); 
                     }
                     lastActiveTrade = "1";
                     startSimulation = false;
@@ -847,7 +848,8 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
                 } else if (!startSimulation && !mlBuy && lastActiveTrade == "1") {
                     lastActiveTrade = "-1";
-                    sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                    //sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                    sharesPurchased = 38
                     totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     testPortfolio = testPortfolio + totalValuePurchased;
                     shortPrice = parseFloat(priceData[4]);
