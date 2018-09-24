@@ -715,15 +715,11 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
         let smaGainAverage;
         let buysAverage;
         let exponAvg;
-        let rateOfChange;
 
-      
         if (activeTrade) {
             lastRow = csvRowsCopySimulation[mlPredictCounter];
         }
 
-
-        
         if (backTest) {
             activeModel = models[desiredBackTestModel];
             lastRow = backTestData[mlPredictCounter].dataOneDayBackData;
@@ -743,8 +739,6 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
         buysAverage = lastRow[15].toString();
         exponAvg = lastRow[16].toString();
         tripleExponSmooth = lastRow[17].toString();
-
-
 
         let params = {
             MLModelId: activeModel.model, 
@@ -771,94 +765,123 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
             }
         };
       
-  	/*
-        if (custom) {
-           dataObj = {};
-           let headerCount = 0; 
-           headerMap.forEach(function(headerItem) {
-             dataObj[headerItem] = lastRow[headerCount].toString(); 
- 	  });
-          params.Record = dataObj;
-	}
-	*/
-
-        ml.predict(params, function(err, data) {
-            if (err) {
-                console.log(err, err.stack);
-            } else {     
-//                console.log(data);
-                let obj = {};
-
         
-                obj.buy = data["Prediction"]["predictedScores"][1].toFixed(3);
-                if (data["Prediction"]["predictedScores"][-1]) {
-                    obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(3);
-                }
-               
-              // obj.hold = data["Prediction"]["predictedScores"][0].toFixed(3);
-               obj.hold = 0; 
-               obj.type = activeModel.type;
-                totalPredictions.push(obj);
-                let mlBuy;
-                if (backTest) {
-                    mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
-                    if (mlBuy && backTestData[mlPredictCounter].decision == "1") {
-                        backTestData[mlPredictCounter].correct = true;
-                        backTestCorrect++;
-                        buyCorrectCounter++;
+        let p1 = new Promise(function(resolve, reject) {
+            mlPredictAmazon(resolve,params);
+ 	  });
 
-                    } else if (!mlBuy && backTestData[mlPredictCounter].decision == "-1") {
-
-                        backTestData[mlPredictCounter].correct = true;
-                        backTestCorrect++;
-                        sellCorrectCounter++;
-                    } else {
-                        backTestNonCorrect++;
-                        backTestData[mlPredictCounter].correct = false;
- 			if (backTestData[mlPredictCounter].decision == "-1" && mlBuy) {
-			   backTestBuyNonCorrect++;
-			} else if (backTestData[mlPredictCounter].decision == "1" && !mlBuy) {
-			   backTestSellNonCorrect++;
-			}
-                    }
-                }
-
-                if (activeTrade) {
-                    let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
-                    mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
-                    let testPortfolioCopy = testPortfolio;
-
-//                    console.log(lastRow);
-                    if (mlBuy && (startSimulation || lastActiveTrade == "-1")) {
-                        sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
-                        totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
-			if (true && shortPrice != 0) {
-			   let priceDiff = shortPrice - parseFloat(priceData[4]);
- 			   console.log("short price diff :" + priceDiff);
-           		   testPortfolio += (priceDiff * sharesPurchased); 
-			}
-                        lastActiveTrade = "1";
-                        startSimulation = false;
-                        testPortfolio = testPortfolio - totalValuePurchased;
-                        console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
-                    } else if (!startSimulation && !mlBuy && lastActiveTrade == "1") {
-                        lastActiveTrade = "-1";
-                        sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
-                        totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
-                        testPortfolio = testPortfolio + totalValuePurchased;
-			shortPrice = parseFloat(priceData[4]);
-                        console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]);
-                    }
-                }
-
-                mlPredictCounter++;
-
-                mlPredict(resolve,lastRow,backTest,activeTrade);
+        let p2 = new Promise(function(resolve, reject) {
+            if (activeTrade) {
+                params.MLModelId = models[desiredBackTestModel + 1].model;
+                mlPredictAmazon(resolve,params);
+            } else {     
+                resolve();
             }
         });
+        
+        Promise.all([p1, p2]).then(function(values) {
+            let mlBuy = false;
+            obj = values[0];     
+            obj.hold = 0;
+            totalPredictions.push(obj);
+
+            if (backTest) {
+                mlBuy = parseFloat(obj.buy) > parseFloat(obj.sell);
+                if (mlBuy && backTestData[mlPredictCounter].decision == "1") {
+                    backTestData[mlPredictCounter].correct = true;
+                    backTestCorrect++;
+                    buyCorrectCounter++;
+
+                } else if (!mlBuy && backTestData[mlPredictCounter].decision == "-1") {
+                    backTestData[mlPredictCounter].correct = true;
+                    backTestCorrect++;
+                    sellCorrectCounter++;
+                } else {
+                    backTestNonCorrect++;
+                    backTestData[mlPredictCounter].correct = false;
+                    if (backTestData[mlPredictCounter].decision == "-1" && mlBuy) {
+                    backTestBuyNonCorrect++;
+                    } else if (backTestData[mlPredictCounter].decision == "1" && !mlBuy) {
+                    backTestSellNonCorrect++;
+                    }
+                }
+            }
+
+            if (activeTrade) {
+                mlBuy = false;
+                let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
+
+                mlBuy1 = parseFloat(obj.buy) > parseFloat(obj.sell);
+                if (true) {
+                    mlBuy2 = parseFloat(values[1].buy) > parseFloat(values[1].sell);
+                    let decision = 0;
+                    if (lastActiveTrade == "1" && !mlBuy1) {
+                        decision = 1;
+                        mlBuy = false;
+                    } else if (lastActiveTrade == "-1" && mlBuy2) {
+                        mlBuy = true;
+                        decision = 2;
+                    } else if (lastActiveTrade == "1" && mlBuy1) {
+                        mlBuy = true;
+                        decision = 3;
+                    } else {
+                        decision = 4;
+                    }
+
+                    console.log("lastactivetrade " + lastActiveTrade + " decision " + decision + " mlBuy1 " + mlBuy1 + " mlBuy2 " + mlBuy2 + " buy " + obj.buy + " sell " + obj.sell + " buy 2 " + values[1].buy+ " sell2 " + values[1].sell);
+                } else {
+                    mlBuy = mlBuy1;
+                }
+            
+                if (mlBuy && (startSimulation || lastActiveTrade == "-1")) {
+                    sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                    totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
+                    if (true && shortPrice != 0) {
+                       //let priceDiff = shortPrice - parseFloat(priceData[4]);
+                       //console.log("short price diff :" + priceDiff);
+                       //testPortfolio += (priceDiff * sharesPurchased); 
+                    }
+                    lastActiveTrade = "1";
+                    startSimulation = false;
+                    testPortfolio = testPortfolio - totalValuePurchased;
+                    console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+                } else if (!startSimulation && !mlBuy && lastActiveTrade == "1") {
+                    lastActiveTrade = "-1";
+                    sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                    totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
+                    testPortfolio = testPortfolio + totalValuePurchased;
+                    shortPrice = parseFloat(priceData[4]);
+                    console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+                }
+            }
+
+            mlPredictCounter++;
+
+            mlPredict(resolve,lastRow,backTest,activeTrade);
+
+        });
+
     } else {
         resolve();
     }
+}
+
+
+function mlPredictAmazon(resolve,params) {
+    ml.predict(params, function(err, data) {
+        let obj = {};    
+        if (err) {
+            console.log(err, err.stack);
+        } else {     
+            obj.buy = data["Prediction"]["predictedScores"][1].toFixed(3);
+            if (data["Prediction"]["predictedScores"][-1]) {
+                obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(3);
+            }
+            obj.hold = 0; 
+            obj.type = params.MLModelId;
+        }
+        resolve(obj)
+    });
 }
 
 app.get('/download/:editing', function(req, res) {
