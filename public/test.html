@@ -2,7 +2,7 @@
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>Highcharts Demo</title>
   </head>
-  <body>
+  <body style="font-size:12px;">
       <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
@@ -11,9 +11,20 @@
 
   
   <div id="container" style="height: 500px; min-width: 310px"></div>
-  <div style="font-size:12px" id="predictions"></div>
-  <div style="font-size:12px" id="allSaves"></div>
-  <div style="font-size:12px" id="lastRow"></div>
+  Predictions: <br> <div style="font-size:12px" id="predictions"></div>
+  Click History: <br><br> <div style="font-size:12px" id="allSaves"></div>
+  <br>All Data For Last Click: <br> <div style="font-size:12px" id="lastRow"></div>
+  <div style="font-size:12px" id="simulation-dates">
+        Simulation Date 1:<br><div id="simulateDate1"> </div>
+        <br>Simulation Date 2:<br><div id="simulateDate2"> </div>
+        Base Profit:<br><div id="baseProfit"></div><br>
+        <button id="simulate-button">Simulate</button>
+        <br>
+        <br>End Portfolio:<br> <div id="end-portfolio"></div>
+        <br>End Profit:<br> <div id="end-profit"></div>
+        <br>Log:<br><div id="simulation-log"></div>
+    </div>
+
     <script type="text/javascript">
   
   
@@ -21,16 +32,82 @@
   let allSaves = [];
   let url = new URL(window.location.href);
   let edit = url.searchParams.get("edit") == "true" ? true : false;
+  let simulateEnabled = url.searchParams.get("simulate") == "true" ? true : false;
   let server = "http://"+window.location.hostname+":8080";
+  let firstPoint = true;
+  let points = [];
+
+
+  function simulate() {  
+        $("#end-portfolio").html("");
+        $("#simulation-log").html("");         
+
+        $.get(server + '/test/simulate/'+points[0].time+'/'+points[1].time, function(response) {
+            $("#end-portfolio").html(response.portfolio);
+            $("#simulation-log").html(response.log);
+            $("#end-profit").html(1 - 10000/parseFloat(response.portfolio));
+        });      
+  }
+
+  $("#simulate-button").click(function(){
+    simulate();
+  });
+
+
+
+
+function clickGraph(category,y) {
+    console.log(category);
+    console.log(y);
+    let timestamp = moment.unix(category/1000);
+    let backObj = {value:y,time:timestamp.utc().format("Y-MM-DD")};
+
+
+    if (firstPoint) {
+        points[0] = backObj;
+        firstPoint = false;
+    } else {
+        firstPoint = true;
+        points[1] = backObj;
+    }
+    $("#simulateDate1").html(points[0].time + " - " + points[0].value);
+    if (points[1]) {
+        $("#simulateDate2").html(points[1].time  + " - " + points[1].value);
+        $("#baseProfit").html(1 - parseFloat(points[0].value)/parseFloat(points[1].value));
+    }
+
+    $.post(server + '/save', backObj, function(response) {
+        let responseCopy = Object.assign({}, response);
+        console.log(responseCopy);
+        allSaves.unshift(responseCopy);     
+        let items = "";
+        let i = 0;
+        for (;i < allSaves.length; i++) {
+            console.log(allSaves[i][0]);
+            let val = parseFloat(allSaves[i].value);
+            let lastClick =  allSaves[i].isBuy ? "buy" : "sell";
+            items +=  allSaves[i].data[0] + "-" + parseFloat(allSaves[i].data[4]).toFixed(2) + "- Last Click - " + lastClick + "<br>";
+        }
+        let els = "<ul>";
+        responseCopy.predictions.forEach(function(prediction){
+            els += "<li> buy: " + prediction.buy + " sell:" +prediction.sell + " hold: " + prediction.hold + " model: " + prediction.type + "</li>";
+        });
+        els +="</ul>"
+        $('#predictions').html(els);
+        $("#allSaves").html(items);
+        $('#lastRow').html("<p>"+JSON.stringify(responseCopy.lastRow)+"</p>");
+    }, 'json');
+ 
+}
 
   $.getJSON(server + "/download/" + edit, function (data) {
 
-
+ 
       csvData = data;
       // Create the chart
 
 
-console.log(data);
+    console.log(data);
     let chart = Highcharts.stockChart('container', {
   
   
@@ -107,29 +184,7 @@ console.log(data);
                     point: {
                         events: {
                             click: function () {
-                                let timestamp = moment.unix(this.category/1000);
-                                let backObj = {value:this.y,time:timestamp.utc().format("Y-MM-DD")};
-                                $.post(server + '/save', backObj, function(response) {
-                                    let responseCopy = Object.assign({}, response);
-                                    console.log(responseCopy);
-                                    allSaves.unshift(responseCopy);     
-                                    let items = "";
-                                    let i = 0;
-                                    for (;i < allSaves.length; i++) {
-                                        console.log(allSaves[i][0]);
-                                        let val = parseFloat(allSaves[i].value);
-                                        let lastClick =  allSaves[i].isBuy ? "buy" : "sell";
-                                        items +=  allSaves[i].data[0] + "-" + parseFloat(allSaves[i].data[4]).toFixed(2) + "- Last Click - " + lastClick + "<br>";
-                                    }
-                                    let els = "<ul>";
-                                    responseCopy.predictions.forEach(function(prediction){
-                                        els += "<li> buy: " + prediction.buy + " sell:" +prediction.sell + " hold: " + prediction.hold + " model: " + prediction.type + "</li>";
-                                    });
-                                    els +="</ul>"
-                                    $('#predictions').html(els);
-                                    $("#allSaves").html(items);
-                                    $('#lastRow').html("<p>"+JSON.stringify(responseCopy.lastRow)+"</p>");
-                                }, 'json');
+                                clickGraph(this.category,this.y)
                             }
                         }
                     }
@@ -181,6 +236,12 @@ console.log(data);
             }
             
         }
+
+
+        let finalRow = data.csvData[data.csvData.length -1];
+        console.log(finalRow);
+
+        clickGraph(finalRow[0],finalRow[1]);
 
   });
 

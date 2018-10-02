@@ -65,6 +65,11 @@ let csvDataMap = {};
 let lastActiveTrade = "-1";
 let addPointsToBuyData = false;
 let desiredBackTestModel = 0;
+let shortPrice = 0;
+let sharesPurchased;
+let startSimulation = true;
+let secondModelEnabled = false;
+let simulationLog = "";
 
 function parseBuyAndSellData(res) {
     buyData = [];
@@ -564,18 +569,31 @@ function addData(data,res) {
     });
 }
 
-function portfolioSimulation(res) {
+function portfolioSimulation(res,startDate,endDate) {
     let test = true;
     let custom = false;
     let activeDataObj = csvAllRows;
     if (custom) { 
        activeDataObj = customRows;	   
     } 
-
-    if (test) {
+    simulationLog = "";
+    if (false) {
         csvRowsCopySimulation = activeDataObj.slice(activeDataObj.length - 200,activeDataObj.length - 100);
     } else {
-        csvRowsCopySimulation = activeDataObj.slice(15,activeDataObj.length - 1);
+        let i = 0;
+        let startIndex = 0;
+        let endIndex = 0;
+        for (; i < activeDataObj.length;i++) {
+            if (activeDataObj[i][0] == startDate) {
+                startIndex = i;
+            }  else if (activeDataObj[i][0] == endDate) {
+                endIndex = i;
+            }
+        }
+      
+        console.log("start index: " + startIndex  +  " end index: " + endIndex);
+        csvRowsCopySimulation = activeDataObj.slice(startIndex,endIndex);
+        console.log("simulation length " + csvRowsCopySimulation.length);
     }
  console.log("testPortfolio " + testPortfolio + " short " + shortPrice);
     let p = new Promise(function(resolve, reject) {
@@ -584,8 +602,17 @@ function portfolioSimulation(res) {
         mlPredict(resolve,null,false,true);
     });
     p.then(function(){
-        console.log("testPortfolio " + testPortfolio);
-        res.send({"status":"success"});
+
+
+        if (lastActiveTrade == "1") {
+            console.log("testPortfolio before sell " + testPortfolio);
+            testPortfolio += csvRowsCopySimulation[csvRowsCopySimulation.length-1][4] * sharesPurchased;
+            console.log("testPortfolio after sell " + testPortfolio);
+        } else {
+            console.log("testPortfolio " + testPortfolio);
+        
+        }
+        res.send({"status":"success", "portfolio":testPortfolio,"log":simulationLog});
     });
 }
 
@@ -694,9 +721,7 @@ function backTest(res) {
     });
 }
 
-let shortPrice = 0;
-let sharesPurchased;
-let startSimulation = true;
+
 
 function mlPredict(resolve,lastRow,backTest,activeTrade) {
     if (
@@ -771,7 +796,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
  	  });
 
         let p2 = new Promise(function(resolve, reject) {
-            if (false) {
+            if (secondModelEnabled) {
                 params.MLModelId = models[desiredBackTestModel + 1].model;
                 mlPredictAmazon(resolve,params);
             } else {     
@@ -812,7 +837,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 let priceData = csvRowsCopySimulation[mlPredictCounter + 1];
 
                 mlBuy1 = parseFloat(obj.buy) > parseFloat(obj.sell);
-                if (false) {
+                if (secondModelEnabled) {
                     mlBuy2 = parseFloat(values[1].buy) > parseFloat(values[1].sell);
                     let decision = 0;
                     if (lastActiveTrade == "1" && !mlBuy1) {
@@ -834,8 +859,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 }
             
                 if (mlBuy && (startSimulation || lastActiveTrade == "-1")) {
-                    //sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
-                    sharesPurchased = 38
+                    sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
                     totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     if (true && shortPrice != 0) {
                         let priceDiff = shortPrice - parseFloat(priceData[4]);
@@ -845,15 +869,21 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     lastActiveTrade = "1";
                     startSimulation = false;
                     testPortfolio = testPortfolio - totalValuePurchased;
-                    console.log("buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+                    let buyLog = "buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4];
+                    console.log(buyLog);
+                    simulationLog += "<br>" + buyLog;
                 } else if (!startSimulation && !mlBuy && lastActiveTrade == "1") {
                     lastActiveTrade = "-1";
-                    //sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
-                    sharesPurchased = 38
+                    //sharesPurchased = 38
                     totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     testPortfolio = testPortfolio + totalValuePurchased;
                     shortPrice = parseFloat(priceData[4]);
-                    console.log("sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]);
+                    let sellLog = "sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4];
+                    console.log(sellLog);
+                    simulationLog += "<br>" + sellLog;
+                    sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+
+
                 }
             }
 
@@ -918,7 +948,7 @@ app.get('/test/backTest/:model', function(req, res) {
     backTest(res);
 
 });
-app.get('/test/simulate/:model', function(req, res) {
+app.get('/test/simulate/:startDate/:endDate', function(req, res) {
         startSimulation = true;
         shortPrice = 0;
 	testPortfolio = 10000;
@@ -927,7 +957,7 @@ app.get('/test/simulate/:model', function(req, res) {
    	}  else {
             desiredBackTestModel = 0;
         }    
-	portfolioSimulation(res);
+	portfolioSimulation(res,req.param("startDate"),req.param("endDate"));
 });
 
 app.get('/test/checkBuySellData', function(req, res) {
