@@ -863,13 +863,15 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     if (true && shortPrice != 0) {
                         let priceDiff = shortPrice - parseFloat(priceData[4]);
-                        console.log("short price diff :" + priceDiff);
                         testPortfolio += (priceDiff * sharesPurchased); 
+                        let shortPriceLog = "short price diff :" + priceDiff + " shares purchased " + sharesPurchased + " share price " + priceData[4] + " testPort " + testPortfolio;
+                        console.log(shortPriceLog);
+                        simulationLog += "<br>" + shortPriceLog;                        
                     }
                     lastActiveTrade = "1";
                     startSimulation = false;
                     testPortfolio = testPortfolio - totalValuePurchased;
-                    let buyLog = "buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4];
+                    let buyLog = "buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4] + " shares " + sharesPurchased;
                     console.log(buyLog);
                     simulationLog += "<br>" + buyLog;
                 } else if (!startSimulation && !mlBuy && lastActiveTrade == "1") {
@@ -878,7 +880,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     testPortfolio = testPortfolio + totalValuePurchased;
                     shortPrice = parseFloat(priceData[4]);
-                    let sellLog = "sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4];
+                    let sellLog = "sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]  + " shares " + sharesPurchased;
                     console.log(sellLog);
                     simulationLog += "<br>" + sellLog;
                     sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
