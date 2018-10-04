@@ -12,8 +12,8 @@
  
   function simulate() {  
         $("#end-portfolio").val("");
-        $("#simulation-log").val("");  
-        $("#simulation-log-csv").val("");  
+        $("#simulation-log").html("");  
+        $("#simulation-log-csv").text("");  
         $("#end-profit").val(0);  
         $("#end-portfolio").val(0);     
 
