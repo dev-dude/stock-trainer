@@ -69,7 +69,8 @@ let shortPrice = 0;
 let sharesPurchased;
 let startSimulation = true;
 let secondModelEnabled = false;
-let simulationLog = "";
+let simulationLog = "<ul>";
+let simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
 
 function parseBuyAndSellData(res) {
     buyData = [];
@@ -576,7 +577,8 @@ function portfolioSimulation(res,startDate,endDate) {
     if (custom) { 
        activeDataObj = customRows;	   
     } 
-    simulationLog = "";
+    simulationLog = "<ul>";
+    simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
     if (false) {
         csvRowsCopySimulation = activeDataObj.slice(activeDataObj.length - 200,activeDataObj.length - 100);
     } else {
@@ -612,7 +614,14 @@ function portfolioSimulation(res,startDate,endDate) {
             console.log("testPortfolio " + testPortfolio);
         
         }
-        res.send({"status":"success", "portfolio":testPortfolio,"log":simulationLog});
+        fs.writeFile('public/output.csv', simulationLogCsv, 'utf8', function (err) {
+            if (err) {
+                console.log(err);
+                console.log('Some error occured - file either not saved or corrupted file saved.');
+            }
+        });
+        res.send({"status":"success", "portfolio":testPortfolio,"log":simulationLog,simulationLogCsv:simulationLogCsv});
+       
     });
 }
 
@@ -859,33 +868,37 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 }
             
                 if (mlBuy && (startSimulation || lastActiveTrade == "-1")) {
-                    sharesPurchased = Math.floor(testPortfolio / parseFloat(priceData[4]));
-                    totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     if (true && shortPrice != 0) {
                         let priceDiff = shortPrice - parseFloat(priceData[4]);
                         testPortfolio += (priceDiff * sharesPurchased); 
-                        let shortPriceLog = "short price diff :" + priceDiff + " shares purchased " + sharesPurchased + " share price " + priceData[4] + " testPort " + testPortfolio;
+                        let shortPriceLog = "short gain diff" + priceDiff + " shares purchased " + sharesPurchased + " testPort " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " share price " + priceData[4];
+                        let shortPriceCsv = "short," + sharesPurchased + "," + testPortfolio + "," + priceData[0] + "," + totalValuePurchased + "," + priceData[4] + "\n";
                         console.log(shortPriceLog);
-                        simulationLog += "<br>" + shortPriceLog;                        
+                        simulationLog += "<li>" + shortPriceLog + "</li>";        
+                        simulationLogCsv += shortPriceCsv;            
                     }
+                    sharesPurchased = Math.floor(testPortfolio / parseFloat(priceData[4]));
+                    totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     lastActiveTrade = "1";
                     startSimulation = false;
                     testPortfolio = testPortfolio - totalValuePurchased;
-                    let buyLog = "buy: " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " spy " + priceData[4] + " shares " + sharesPurchased;
+                    let buyLog = "buy: shares purchased: " + sharesPurchased + " testPort " + testPortfolio + " time " + priceData[0] + " total bought " + totalValuePurchased + " share price " + priceData[4] ;
+                    let buyLogCsv = "buy," + sharesPurchased + "," + testPortfolio + "," + priceData[0] + "," + totalValuePurchased + "," + priceData[4] + "\n";
+                    simulationLogCsv += buyLogCsv;            
                     console.log(buyLog);
-                    simulationLog += "<br>" + buyLog;
+                    simulationLog += "<li>" + buyLog + "</li>";
                 } else if (!startSimulation && !mlBuy && lastActiveTrade == "1") {
                     lastActiveTrade = "-1";
                     //sharesPurchased = 38
                     totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     testPortfolio = testPortfolio + totalValuePurchased;
                     shortPrice = parseFloat(priceData[4]);
-                    let sellLog = "sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]  + " shares " + sharesPurchased;
+                    let sellLog = "sell: shares purchased: " + sharesPurchased + " testPort " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " share price " + priceData[4];
+                    let sellLogCsv = "sell," + sharesPurchased + "," + testPortfolio + "," + priceData[0] + "," + totalValuePurchased + "," + priceData[4] + "\n";
                     console.log(sellLog);
-                    simulationLog += "<br>" + sellLog;
+                    simulationLog += "<li>" + sellLog + "</li>";
+                    simulationLogCsv += sellLogCsv;            
                     sharesPurchased = Math.floor(testPortfolio / parseFloat(priceData[4]));
-
-
                 }
             }
 

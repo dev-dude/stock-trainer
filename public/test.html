@@ -2,269 +2,92 @@
     <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>Highcharts Demo</title>
   </head>
-  <body style="font-size:12px;">
-      <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+  <body>
+  <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
   <script src="https://code.highcharts.com/stock/highstock.js"></script>
   <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
   <script src="https://code.highcharts.com/stock/modules/export-data.js"></script>
+  <script src="https://code.highcharts.com/stock/modules/export-data.js"></script>
+
   <script src="https://momentjs.com/downloads/moment.min.js"></script>
+  <script src="code.js"></script>
+  <link rel="stylesheet" href="bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+  <style>
+    .loader {
+        border: 5px solid #f3f3f3; /* Light grey */
+        border-top: 5px solid #3498db; /* Blue */
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        float: left;
+        margin-top: 7px;
+        margin-left: 12px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .float-left {
+        float:left;
+    }
+</style>
 
-  
-  <div id="container" style="height: 500px; min-width: 310px"></div>
-  Predictions: <br> <div style="font-size:12px" id="predictions"></div>
-  Click History: <br><br> <div style="font-size:12px" id="allSaves"></div>
-  <br>All Data For Last Click: <br> <div style="font-size:12px" id="lastRow"></div>
-  <div style="font-size:12px" id="simulation-dates">
-        Simulation Date 1:<br><div id="simulateDate1"> </div>
-        <br>Simulation Date 2:<br><div id="simulateDate2"> </div>
-        Base Profit:<br><div id="baseProfit"></div><br>
-        <button id="simulate-button">Simulate</button>
-        <br>
-        <br>End Portfolio:<br> <div id="end-portfolio"></div>
-        <br>End Profit:<br> <div id="end-profit"></div>
-        <br>Log:<br><div id="simulation-log"></div>
+  <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <br>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-6">
+            <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <button id="simulate-click-1" class="btn btn-info" data-val="0" type="submit">Set Start Date</button>
+                    </div>
+                    <input id="simulateDate1" type="text" class="form-control" aria-describedby="basic-addon1">
+                </div>
+                <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <button  id="simulate-click-2" class="btn btn-success set-simulate" data-val="1" type="submit">Set End Date</button>
+                    </div>
+                    <input id="simulateDate2" type="text" class="form-control" aria-describedby="basic-addon1">
+                </div>
+            </div>
+            <div class="col-3">   
+                <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon1">Base Profit:</span>
+                    </div>
+                    <input type="text"  id="baseProfit" class="form-control" value="0" aria-label="Username" aria-describedby="basic-addon1">
+                </div>
+                <button class="btn btn-primary float-left" id="simulate-button">Simulate</button>
+                <div class="loader float-left"></div>
+            </div>
+            <div class="col-3">
+             
+                <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon1">End Port:</span>
+                    </div>
+                    <input type="text" id="end-portfolio" class="form-control" value="0" aria-label="Username" aria-describedby="basic-addon1">
+                </div>
+                <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text" id="basic-addon1">End Profit:</span>
+                    </div>
+                    <input type="text" id="end-profit" class="form-control" value="0" aria-label="Username" aria-describedby="basic-addon1">
+                </div>
+            </div>
+        </div>
+
+        <div id="container" style="height: 500px; min-width: 310px"></div>
+        <b>Predictions:</b> <br> <div id="predictions"></div>
+        <b>Click History:</b> <br> <div id="allSaves"></div>
+        <b>Simulation Output: <a href="output.csv" target="_blank">Download CSV</a></b><div id="simulation-log"><ul><li>No Simulations Run Yet</li></ul></div>
+        <!-- <b>Simulation CSV Output:</b><div id="simulation-log-csv"><ul><li>No Simulations Run Yet</li></ul></div> -->
+        <b>All Data For Last Click:</b> <br> <div id="lastRow"></div>
     </div>
-
-    <script type="text/javascript">
-  
-  
-  let csvData;
-  let allSaves = [];
-  let url = new URL(window.location.href);
-  let edit = url.searchParams.get("edit") == "true" ? true : false;
-  let simulateEnabled = url.searchParams.get("simulate") == "true" ? true : false;
-  let server = "http://"+window.location.hostname+":8080";
-  let firstPoint = true;
-  let points = [];
-
-
-  function simulate() {  
-        $("#end-portfolio").html("");
-        $("#simulation-log").html("");         
-
-        $.get(server + '/test/simulate/'+points[0].time+'/'+points[1].time, function(response) {
-            $("#end-portfolio").html(response.portfolio);
-            $("#simulation-log").html(response.log);
-            $("#end-profit").html((parseFloat(response.portfolio) - 10000)/10000);
-        });      
-  }
-
-  $("#simulate-button").click(function(){
-    simulate();
-  });
-
-
-
-
-function clickGraph(category,y) {
-    console.log(category);
-    console.log(y);
-    let timestamp = moment.unix(category/1000);
-    let backObj = {value:y,time:timestamp.utc().format("Y-MM-DD")};
-
-
-    if (firstPoint) {
-        points[0] = backObj;
-        firstPoint = false;
-    } else {
-        firstPoint = true;
-        points[1] = backObj;
-    }
-    $("#simulateDate1").html(points[0].time + " - " + points[0].value);
-    if (points[1]) {
-        $("#simulateDate2").html(points[1].time  + " - " + points[1].value);
-        $("#baseProfit").html(1 - parseFloat(points[0].value)/parseFloat(points[1].value));
-    }
-
-    $.post(server + '/save', backObj, function(response) {
-        let responseCopy = Object.assign({}, response);
-        console.log(responseCopy);
-        allSaves.unshift(responseCopy);     
-        let items = "";
-        let i = 0;
-        for (;i < allSaves.length; i++) {
-            console.log(allSaves[i][0]);
-            let val = parseFloat(allSaves[i].value);
-            let lastClick =  allSaves[i].isBuy ? "buy" : "sell";
-            items +=  allSaves[i].data[0] + "-" + parseFloat(allSaves[i].data[4]).toFixed(2) + "- Last Click - " + lastClick + "<br>";
-        }
-        let els = "<ul>";
-        responseCopy.predictions.forEach(function(prediction){
-            els += "<li> buy: " + prediction.buy + " sell:" +prediction.sell + " hold: " + prediction.hold + " model: " + prediction.type + "</li>";
-        });
-        els +="</ul>"
-        $('#predictions').html(els);
-        $("#allSaves").html(items);
-        $('#lastRow').html("<p>"+JSON.stringify(responseCopy.lastRow)+"</p>");
-    }, 'json');
- 
-}
-
-  $.getJSON(server + "/download/" + edit, function (data) {
-
- 
-      csvData = data;
-      // Create the chart
-
-
-    console.log(data);
-    let chart = Highcharts.stockChart('container', {
-  
-  
-          rangeSelector: {
-              selected: 1
-          },
-          yAxis: [{ // Primary yAxis
-                labels: {
-                    format: 'spy',
-                    style: {
-                        color: Highcharts.getOptions().colors[2]
-                    }
-                },
-                title: {
-                    text: '{value}',
-                    style: {
-                        color: Highcharts.getOptions().colors[2]
-                    }
-                },
-                opposite: true
-
-            }, { 
-            gridLineWidth: 0,
-            title: {
-                text: 'rsi',
-                style: {
-                    color: Highcharts.getOptions().colors[0]
-                }
-            },
-            labels: {
-                format: '{value}',
-                style: {
-                    color: Highcharts.getOptions().colors[0]
-                }
-            }}, { 
-            gridLineWidth: 0,
-            title: {
-                text: 'BND',
-                style: {
-                    color: Highcharts.getOptions().colors[0]
-                }
-            },
-            labels: {
-                format: '{value}',
-                style: {
-                    color: Highcharts.getOptions().colors[0]
-                }
-            }
-          },
-          { 
-            gridLineWidth: 0,
-            title: {
-                text: 'TLT',
-                style: {
-                    color: Highcharts.getOptions().colors[0]
-                }
-            },
-            labels: {
-                format: '{value}',
-                style: {
-                    color: Highcharts.getOptions().colors[0]
-                }
-            }
-          }
-      
-    ],
-  
-          title: {
-              text: ''
-          },
-          plotOptions: {
-                series: {
-                    cursor: 'pointer',
-                    point: {
-                        events: {
-                            click: function () {
-                                clickGraph(this.category,this.y)
-                            }
-                        }
-                    }
-                }
-            },
-          series: [{
-              name: 'spy',
-              yAxis:0,
-              data: data.csvData,
-              tooltip: {
-                  valueDecimals: 2
-              }
-          },
-          {
-              name: 'rsi',
-              lineWidth:.5,
-              yAxis:1,
-              dashStyle: 'longdash',
-              color: 'grey',
-              data: data.rsiData,
-              tooltip: {
-                  valueDecimals: 2
-              }
-          },{
-              name: 'bnd',
-              yAxis:2,
-              data: data.secondSymbolCsvData,
-              tooltip: {
-                  valueDecimals: 2
-              }
-          },{
-              name: 'TLT',
-              yAxis:2,
-              data: data.thirdSymbolCsvData,
-              tooltip: {
-                  valueDecimals: 2
-              }
-          }]
-      });
-        let z = 0;
-        for (; z < csvData.buyDataAndDateOnly.length; z++) {
-            let plotLine;
-            if (csvData.buyDataAndDateOnly[z].action == 1) {
-                plotLine = formatPlotLines("b","black",csvData.buyDataAndDateOnly[z].timeStamp);
-                chart.xAxis[0].addPlotLine(plotLine);
-            } else if (csvData.buyDataAndDateOnly[z].action == -1) {
-                plotLine = formatPlotLines("s","red",csvData.buyDataAndDateOnly[z].timeStamp);
-                chart.xAxis[0].addPlotLine(plotLine);
-            }
-            
-        }
-
-
-        let finalRow = data.csvData[data.csvData.length -1];
-        console.log(finalRow);
-
-        clickGraph(finalRow[0],finalRow[1]);
-
-  });
-
-  function formatPlotLines(type,color,time) {
-    let plotLine = {
-    value: +time,
-        width: .5,
-        color: color,
-        dashStyle: 'dash',
-        label: {
-        text: type,
-            align: 'left',
-            y: 0,
-            x: 0
-        }
-    };
-    return plotLine;
-}
-
- 
-  
-  </script>
-
   
   
   </body></html>
