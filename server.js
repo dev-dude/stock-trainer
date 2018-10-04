@@ -24,14 +24,14 @@ const models = [
     {"type":"bond3","model":"ml-Kc8g54IxIQ0"},
     {"type":"bond2","model":"ml-3p4OwdMnRGb"},
     {"type":"bond","model":"ml-J7kkZQOKASV"},
-    {"type":"exponback","model":"ml-KZbmaAZxeej"},
+/*    {"type":"exponback","model":"ml-KZbmaAZxeej"},
     {"type":"testout2","model":"ml-6NIDATbNrFz"},
     {"type":"testout2","model":"ml-zQssmkHMwMs"},
     {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
     {"type":"testout","model":"ml-UoL1jgSoiR6"},
     {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
     {"type":"test","model":"ml-P8hYnaHIGjP"},
-    {"type":"1 day control","model":"ml-v2BGXmOj7z3"}
+    {"type":"1 day control","model":"ml-v2BGXmOj7z3"} */
 ];
 AWS.config.update(configFile.awsKeys);
 
@@ -859,7 +859,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 }
             
                 if (mlBuy && (startSimulation || lastActiveTrade == "-1")) {
-                    sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                    sharesPurchased = Math.floor(testPortfolio / parseFloat(priceData[4]));
                     totalValuePurchased = parseFloat(priceData[4] * sharesPurchased);
                     if (true && shortPrice != 0) {
                         let priceDiff = shortPrice - parseFloat(priceData[4]);
@@ -883,7 +883,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                     let sellLog = "sell: " + testPortfolio  + " time " + priceData[0]  + " total bought " + totalValuePurchased + " spy " + priceData[4]  + " shares " + sharesPurchased;
                     console.log(sellLog);
                     simulationLog += "<br>" + sellLog;
-                    sharesPurchased = Math.floor(10000 / parseFloat(priceData[4]));
+                    sharesPurchased = Math.floor(testPortfolio / parseFloat(priceData[4]));
 
 
                 }

@@ -45,7 +45,7 @@
         $.get(server + '/test/simulate/'+points[0].time+'/'+points[1].time, function(response) {
             $("#end-portfolio").html(response.portfolio);
             $("#simulation-log").html(response.log);
-            $("#end-profit").html(1 - 10000/parseFloat(response.portfolio));
+            $("#end-profit").html((parseFloat(response.portfolio) - 10000)/10000);
         });      
   }
 
