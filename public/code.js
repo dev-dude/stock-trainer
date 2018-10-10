@@ -17,7 +17,7 @@
         $("#end-profit").val(0);  
         $("#end-portfolio").val(0);     
 
-        $.get(server + '/test/simulate/'+points[0].time+'/'+points[1].time, function(response) {
+        $.get(server + '/test/simulate/'+points[0].time+'/'+points[1].time+'/'+ $("#model").val(), function(response) {
             $("#simulate-button").prop("disabled",false);
             $(".loader").hide();
             $("#end-portfolio").val(response.portfolio);
@@ -93,6 +93,7 @@ function clickGraph(category,y) {
         els +="</ul>"
         $('#predictions').html(els);
         $("#allSaves").html(items);
+        $("#model").val(responseCopy.models[0].model);
         $('#lastRow').html("<ul><li>"+JSON.stringify(responseCopy.lastRow)+"</li></ul>");
     }, 'json');
  

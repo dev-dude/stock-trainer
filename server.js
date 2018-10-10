@@ -555,7 +555,7 @@ function addData(data,res) {
                     console.log('Some error occured - file either not saved or corrupted file saved.');
                     res.send({msg:"error","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow});
                 } else{
-                    let responseMessage = {msg:"saved","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow};
+                    let responseMessage = {msg:"saved","data":dataRow,"isBuy":isBuyBeforeChange,"predictions":totalPredictions, "lastRow":dataRow,"models":models};
                     if (addPointsToBuyData) {
                         console.log("writing data to buyData4.csv " + addPointsToBuyData);
                         fs.writeFile('./buyData4.csv', buyDataCsvOut, 'utf8', function (err) {
@@ -963,22 +963,22 @@ app.post('/save', function(req, res) {
 app.get('/test/backTest/:model', function(req, res) {
     testPortfolio = 10000;
     if (req.param("model")) {
-        desiredBackTestModel = parseInt(req.param("model"));
-    }  else {
-        desiredBackTestModel = 0;
-    }
+        models[0] = req.param("model");
+    }  
+    desiredBackTestModel = 0;
     backTest(res);
 
 });
-app.get('/test/simulate/:startDate/:endDate', function(req, res) {
+app.get('/test/simulate/:startDate/:endDate/:model', function(req, res) {
         startSimulation = true;
         shortPrice = 0;
 	testPortfolio = 10000;
 	if (req.param("model")) {
-            desiredBackTestModel = parseInt(req.param("model"));
-   	}  else {
-            desiredBackTestModel = 0;
-        }    
+         models[0].model = req.param("model");
+    }  
+    console.log("selected model:" + models[0].model);
+    desiredBackTestModel = 0;
+         
 	portfolioSimulation(res,req.param("startDate"),req.param("endDate"));
 });
 
