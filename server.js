@@ -20,9 +20,9 @@ app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
 const models = [
-    {"type":"dumb-test-model","model":"ml-ARMwe8HckX2"},
     {"type":"buyssells","model":"ml-QdqmZhvuMaI"},
-    {"type":"bond3","model":"ml-Kc8g54IxIQ0"},
+ {"type":"dumb-test-model","model":"ml-oE6hPHiDUUu"},   
+ {"type":"bond3","model":"ml-Kc8g54IxIQ0"},
     {"type":"bond2","model":"ml-3p4OwdMnRGb"},
     {"type":"bond","model":"ml-J7kkZQOKASV"},
 /*    {"type":"exponback","model":"ml-KZbmaAZxeej"},
