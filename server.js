@@ -20,7 +20,8 @@ app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
 const models = [
-       {"type":"buyssells","model":"ml-QdqmZhvuMaI"},
+    {"type":"dumb-test-model","model":"ml-ARMwe8HckX2"},
+    {"type":"buyssells","model":"ml-QdqmZhvuMaI"},
     {"type":"bond3","model":"ml-Kc8g54IxIQ0"},
     {"type":"bond2","model":"ml-3p4OwdMnRGb"},
     {"type":"bond","model":"ml-J7kkZQOKASV"},
@@ -71,6 +72,8 @@ let startSimulation = true;
 let secondModelEnabled = false;
 let simulationLog = "<ul>";
 let simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
+let tickerStartTime = 1176235388;
+let tickerEndTime = 15341894997;
 
 function parseBuyAndSellData(res) {
     buyData = [];
@@ -227,7 +230,7 @@ function downloadCsv(response,type) {
         headers: {
           'Cookie': 'B=b9ihaitdim360&b=3&s=8m'
         },
-        uri: 'http://query1.finance.yahoo.com/v7/finance/download/'+type+'?period1=1176235388&period2=15341894997&interval=1d&events=history&crumb=HbK4LWmmHjG',
+        uri: 'http://query1.finance.yahoo.com/v7/finance/download/'+type+'?period1='+tickerStartTime+'&period2='+tickerEndTime+'&interval=1d&events=history&crumb=HbK4LWmmHjG',
         method: 'GET'
       }, function(err, res, body) {     
         console.log(err);
@@ -595,7 +598,8 @@ function portfolioSimulation(res,startDate,endDate) {
       
         console.log("start index: " + startIndex  +  " end index: " + endIndex);
         csvRowsCopySimulation = activeDataObj.slice(startIndex,endIndex);
-        console.log("simulation length " + csvRowsCopySimulation.length);
+    	console.log("last obj " + activeDataObj[endIndex][0]);
+	console.log("simulation length " + csvRowsCopySimulation.length);
     }
  console.log("testPortfolio " + testPortfolio + " short " + shortPrice);
     let p = new Promise(function(resolve, reject) {
@@ -608,7 +612,9 @@ function portfolioSimulation(res,startDate,endDate) {
 
         if (lastActiveTrade == "1") {
             console.log("testPortfolio before sell " + testPortfolio);
-            testPortfolio += csvRowsCopySimulation[csvRowsCopySimulation.length-1][4] * sharesPurchased;
+            console.log("shares purchased" + sharesPurchased);
+            console.log("share price " + csvRowsCopySimulation[mlPredictCounter][4]);
+            testPortfolio += csvRowsCopySimulation[mlPredictCounter][4] * sharesPurchased;
             console.log("testPortfolio after sell " + testPortfolio);
         } else {
             console.log("testPortfolio " + testPortfolio);

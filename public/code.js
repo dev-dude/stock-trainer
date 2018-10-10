@@ -70,7 +70,7 @@ function clickGraph(category,y) {
     }
 
     if (points[0] && points[1]) {
-        $("#baseProfit").val(1 - parseFloat(points[0].value)/parseFloat(points[1].value));
+        $("#baseProfit").val((parseFloat(points[1].value) - parseFloat(points[0].value))/parseFloat(points[0].value));
     }
     
     $.post(server + '/save', backObj, function(response) {
