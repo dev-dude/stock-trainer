@@ -170,6 +170,21 @@ function clickGraph(category,y) {
                     color: Highcharts.getOptions().colors[0]
                 }
             }
+          },
+          { 
+            gridLineWidth: 0,
+            title: {
+                text: 'EUR',
+                style: {
+                    color: Highcharts.getOptions().colors[0]
+                }
+            },
+            labels: {
+                format: '{value}',
+                style: {
+                    color: Highcharts.getOptions().colors[0]
+                }
+            }
           }
       
     ],
@@ -221,7 +236,14 @@ function clickGraph(category,y) {
               tooltip: {
                   valueDecimals: 2
               }
-          }]
+          },{
+            name: 'EUR',
+            yAxis:3,
+            data: data.fourthSymbolCsvData,
+            tooltip: {
+                valueDecimals: 2
+            }
+        }]
       });
         let z = 0;
         for (; z < csvData.buyDataAndDateOnly.length; z++) {

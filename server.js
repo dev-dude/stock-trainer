@@ -65,7 +65,8 @@ let simulationLog = "<ul>";
 let simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
 let tickerStartTime = 1176235388;
 let tickerEndTime = 15341894997;
-let columnHeaders =   ["Gains","Multi Day Gains","SMA Gains","Stoch RSI", "Single Day Volume","Buy","Stoch Avg","SMA Gains Avg","Buys Avg","Expon Moving Avg","Triple Expon Smoothed","Bond Gains","Bond Vol","Bond Expon Avg","Bond Triple","Trs Gains","Trs Vol","Trs Expon Avg","Trs Triple"];
+let columnHeaders =   ["Gains","Multi Day Gains","SMA Gains","Stoch RSI", "Single Day Volume","Buy","Stoch Avg","SMA Gains Avg","Buys Avg","Expon Moving Avg","Triple Expon Smoothed","Bond Gains","Bond Vol","Bond Expon Avg","Bond Triple",
+"Trs Gains",/*23*/"Trs Vol",/*24*/"Trs Expon Avg",/*25*/"Trs Triple",/*26*/"EUR Gains",/*27*/"EUR Vol",/*28*/"EUR Expon Avg",/*29*/"EUR Triple"];
 let symbols = [];
 let activeSymbols = [
     {
@@ -73,10 +74,15 @@ let activeSymbols = [
         "singleDayVolume":{"val":0,"index":19},
         "singleDayGains":{"val":0,"index":18}
     },
-    {
+    { 
         "label":"UUP",
         "singleDayVolume":{"val":0,"index":23},
         "singleDayGains":{"val":0,"index":22}
+    },
+    {
+        "label":"FXE",
+        "singleDayVolume":{"val":0,"index":27},
+        "singleDayGains":{"val":0,"index":26}
     }
 ];
 
@@ -98,6 +104,7 @@ function parseBuyAndSellData(res) {
         }
         count++;
     }).on('end',function() {
+        console.log("buy Data parsed");
         parseData(res);
     });
 }
@@ -217,9 +224,17 @@ function parseData(res) {
         let p2 = new Promise(function(resolve, reject) {
             parseDataPromise(resolve,"UUP",1);
          });
-        Promise.all([p,p2]).then(function() {
+         let p3 = new Promise(function(resolve, reject) {
+            parseDataPromise(resolve,"FXE",2);
+         });
+        Promise.all([p,p2,p3]).then(function() {
             intialRun = false;
-            firstRunData = {csvData:csvData,rsiData:sendRsiData,buyDataAndDateOnly:buyDataAndDateOnly,secondSymbolCsvData:symbols[0].secondSymbolCsvData,thirdSymbolCsvData:symbols[1].secondSymbolCsvData};
+            //FIXME: New Symbol HERE
+            firstRunData = {csvData:csvData,rsiData:sendRsiData,
+                buyDataAndDateOnly:buyDataAndDateOnly,
+                secondSymbolCsvData:symbols[0].secondSymbolCsvData,
+                thirdSymbolCsvData:symbols[1].secondSymbolCsvData,
+                fourthSymbolCsvData:symbols[2].secondSymbolCsvData};
 	    res.send(firstRunData);
         });
     });
@@ -251,6 +266,9 @@ function downloadCsv(response,type) {
               } else if (type == "BND") {
                 console.log("parsing UUP");
                 downloadCsv(response,"UUP");
+            } else if (type == "UUP") {
+                console.log("parsing FXE");
+                downloadCsv(response,"FXE");
               } else {
                 console.log("processing data");
  		        parseBuyAndSellData(response);
@@ -399,8 +417,10 @@ function addData(data,res) {
     let obv = {close:[],volume:[]};
     let obvBond = {close:[],volume:[]};
     let obvTrs = {close:[],volume:[]};
+    let obvEur = {close:[],volume:[]};
     let obvTrsGains = [];
     let bondGains = [];
+    let eurGains = [];
     for (; z < csvAllRows.length; z++) {
 	    if (z >1) {
 
@@ -411,12 +431,17 @@ function addData(data,res) {
             obvTrs.close.push(parseFloat(symbols[1].secondSymbolAllRows[z][4]));
             obvTrs.volume.push(parseFloat(symbols[1].secondSymbolAllRows[z][6]));
 
+            obvEur.close.push(parseFloat(symbols[2].secondSymbolAllRows[z][4]));
+            obvEur.volume.push(parseFloat(symbols[2].secondSymbolAllRows[z][6]));
+
             obv.close.push(parseFloat(csvAllRows[z][4]));
             obv.volume.push(parseFloat(csvAllRows[z][6]));	
             
-            gainsOnly.push(parseFloat(csvAllRows[z][7]));		  
+            gainsOnly.push(parseFloat(csvAllRows[z][7]));	
+
             bondGains.push(parseFloat(csvAllRows[z][18]));
             obvTrsGains.push(parseFloat(csvAllRows[z][22]));
+            eurGains.push(parseFloat(csvAllRows[z][26]));
 
             let expon = {"gain":csvAllRows[z][7],"expon":0};
             gainsAndDate[csvAllRows[z][0]] = expon;
@@ -429,10 +454,13 @@ function addData(data,res) {
     let period = 8;
     let emaValues = EMA.calculate({period : period, values : gainsOnly});
     let obvValues = OBV.calculate(obv);
+    
     let bondEmaValues = EMA.calculate({period : period, values : bondGains});
     let bondObvValues = OBV.calculate(obvBond);
     let trsEmaValues = EMA.calculate({period : period, values : obvTrsGains});
     let trsObvValues = OBV.calculate(obvTrs);
+    let eurEmaValues = EMA.calculate({period : period, values : eurGains});
+    let eurObvValues = OBV.calculate(obvEur);
 
     console.log("emaValues length:" + emaValues.length);
     console.log("obv values  length:" + obvValues.length);
@@ -445,6 +473,7 @@ function addData(data,res) {
         emaValues.unshift(0);
         bondEmaValues.unshift(0);
         trsEmaValues.unshift(0);
+        eurEmaValues.unshift(0);
     }
 
     t = 0;
@@ -452,6 +481,7 @@ function addData(data,res) {
        obvValues.unshift(0);
        bondObvValues.unshift(0);
        trsObvValues.unshift(0);
+       eurObvValues.unshift(0);
     } 
 
     console.log("csvAllROws length" + csvAllRows.length);
@@ -465,6 +495,8 @@ function addData(data,res) {
 
             csvAllRows[z][20]= bondEmaValues[z].toFixed(3);
             csvAllRows[z][24]= trsEmaValues[z].toFixed(3);
+            csvAllRows[z][28]= eurEmaValues[z].toFixed(3);
+
 
             csvAllRows[z][16] = emaValues[z].toFixed(3);
             let tripleSmoothed = (parseFloat(obvValues[z] - obvValues[z-1]) / obvValues[z-1]);
@@ -475,6 +507,9 @@ function addData(data,res) {
 
             let tripleSmoothedTrs = (parseFloat(trsObvValues[z] - trsObvValues[z-1]) / trsObvValues[z-1]);
             csvAllRows[z][25] = tripleSmoothedTrs.toFixed(3);       
+
+            let tripleSmoothedEur = (parseFloat(eurObvValues[z] - eurObvValues[z-1]) / eurObvValues[z-1]);
+            csvAllRows[z][29] = tripleSmoothedEur.toFixed(3);   
     }
 
     let convertedRows = "";
@@ -770,6 +805,7 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
         exponAvg = lastRow[16].toString();
         tripleExponSmooth = lastRow[17].toString();
 
+        //FIXME Make Dynamic
         let params = {
             MLModelId: activeModel.model, 
             PredictEndpoint: 'https://realtime.machinelearning.us-east-1.amazonaws.com',
@@ -791,7 +827,11 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
                 "Trs Gains":lastRow[22].toString(),
                 "Trs Vol":lastRow[23].toString(),
                 "Trs Expon Avg":lastRow[24].toString(),
-                "Trs Triple":lastRow[25].toString()
+                "Trs Triple":lastRow[25].toString(),
+                "EUR Gains":lastRow[26].toString(),
+                "EUR Vol":lastRow[27].toString(),
+                "EUR Expon Avg":lastRow[28].toString(),
+                "EUR Triple":lastRow[29].toString()
             }
         };
       
