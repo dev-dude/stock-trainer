@@ -70,13 +70,13 @@ let symbols = [];
 let activeSymbols = [
     {
         "label":"BND",
-        "singleDayVolume":{"val":0,"index":18},
-        "singleDayGains":{"val":0,"index":19}
+        "singleDayVolume":{"val":0,"index":19},
+        "singleDayGains":{"val":0,"index":18}
     },
     {
         "label":"UUP",
-        "singleDayVolume":{"val":0,"index":22},
-        "singleDayGains":{"val":0,"index":23}
+        "singleDayVolume":{"val":0,"index":23},
+        "singleDayGains":{"val":0,"index":22}
     }
 ];
 
@@ -340,7 +340,7 @@ function addData(data,res) {
             let y = 0;
             for(; y < symbols.length;y++) {
                 activeSymbols[y].singleDayVolume.val = ((symbols[y].secondSymbolAllRows[i][6] - symbols[y].secondSymbolAllRows[i-1][6]) / symbols[y].secondSymbolAllRows[i-1][6]);
-                activeSymbols[y].singleDayGains.val = ((symbols[y].secondSymbolAllRows[i][6] - symbols[y].secondSymbolAllRows[i-1][6]) / symbols[y].secondSymbolAllRows[i-1][6]);
+                activeSymbols[y].singleDayGains.val = ((symbols[y].secondSymbolAllRows[i][5] - symbols[y].secondSymbolAllRows[i-1][5]) / symbols[y].secondSymbolAllRows[i-1][5]);
                 csvAllRows[i][activeSymbols[y].singleDayGains.index] = activeSymbols[y].singleDayGains.val.toFixed(3);
                 csvAllRows[i][activeSymbols[y].singleDayVolume.index] = activeSymbols[y].singleDayVolume.val.toFixed(3);
             }
