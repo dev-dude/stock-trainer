@@ -21,24 +21,15 @@ app.use(basicAuth('stock', 'chart'));
 
 const models = [
     {"type":"buyssells","model":"ml-QdqmZhvuMaI"},
- {"type":"dumb-test-model","model":"ml-oE6hPHiDUUu"},   
- {"type":"bond3","model":"ml-Kc8g54IxIQ0"},
+    {"type":"dumb-test-model","model":"ml-oE6hPHiDUUu"},   
+    {"type":"bond3","model":"ml-Kc8g54IxIQ0"},
     {"type":"bond2","model":"ml-3p4OwdMnRGb"},
-    {"type":"bond","model":"ml-J7kkZQOKASV"},
-/*    {"type":"exponback","model":"ml-KZbmaAZxeej"},
-    {"type":"testout2","model":"ml-6NIDATbNrFz"},
-    {"type":"testout2","model":"ml-zQssmkHMwMs"},
-    {"type":"expon mov avg","model":"ml-ZSB3nzI0I3d"},
-    {"type":"testout","model":"ml-UoL1jgSoiR6"},
-    {"type":"1 day adjusted","model":"ml-KnXusMIYTRZ"},
-    {"type":"test","model":"ml-P8hYnaHIGjP"},
-    {"type":"1 day control","model":"ml-v2BGXmOj7z3"} */
+    {"type":"bond","model":"ml-J7kkZQOKASV"}
 ];
 AWS.config.update(configFile.awsKeys);
 
 AWS.config.update({region:'us-east-1'});
 const ml = new AWS.MachineLearning({ signatureVersion: 'v4' });
-
 
 let csvData=[];
 let priceData=[];
@@ -74,6 +65,20 @@ let simulationLog = "<ul>";
 let simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
 let tickerStartTime = 1176235388;
 let tickerEndTime = 15341894997;
+let columnHeaders =   ["Gains","Multi Day Gains","SMA Gains","Stoch RSI", "Single Day Volume","Buy","Stoch Avg","SMA Gains Avg","Buys Avg","Expon Moving Avg","Triple Expon Smoothed","Bond Gains","Bond Vol","Bond Expon Avg","Bond Triple","Trs Gains","Trs Vol","Trs Expon Avg","Trs Triple"];
+let symbols = [];
+let activeSymbols = [
+    {
+        "label":"BND",
+        "singleDayVolume":{"val":0,"index":18},
+        "singleDayGains":{"val":0,"index":19}
+    },
+    {
+        "label":"UUP",
+        "singleDayVolume":{"val":0,"index":22},
+        "singleDayGains":{"val":0,"index":23}
+    }
+];
 
 function parseBuyAndSellData(res) {
     buyData = [];
@@ -117,7 +122,6 @@ function parseCustom(resolve) {
       resolve();
     });
 } 
-let symbols = [];
 
 function intializeSymbols(indexSize) {
     let i = 0;
@@ -128,6 +132,7 @@ function intializeSymbols(indexSize) {
             secondSymbolPriceData:[],
             secondSymbolAllRows:[]
         }
+
     }
 }
 
@@ -154,7 +159,6 @@ function parseDataPromise(resolve,symbol,index) {
          resolve();
     });
 }
-
 
 function parseData(res) {
     count = 0;
@@ -205,9 +209,8 @@ function parseData(res) {
        
       }
 
-
-          
        //Load custom data
+       //FIXME: New Symbol HERE
         let p = new Promise(function(resolve, reject) {
            parseDataPromise(resolve,"BND",0);
         });  
@@ -223,7 +226,7 @@ function parseData(res) {
 }
 
 function downloadCsv(response,type) {
-    intializeSymbols(2);
+    intializeSymbols(activeSymbols.length);
     console.log("download csv");
     let dest = "./"+type+".csv";
     request.get({
@@ -240,6 +243,7 @@ function downloadCsv(response,type) {
                 return console.log(err);
             }
             //console.log(res);
+            //FIXME: New Symbol HERE
             console.log("The file was saved!");
               if (type == "SPY") {
                 console.log("parsing BND");
@@ -266,26 +270,13 @@ function addData(data,res) {
 
         // seed initial columns
         if (i === 0) {
-            // Buy
-            csvAllRows[i][7] = "Gains";
-            csvAllRows[i][8] = "Multi Day Gains";
-            csvAllRows[i][9] = "SMA Gains";
-            csvAllRows[i][10] = "Stoch RSI";
-            csvAllRows[i][11] = "Single Day Volume";
-            csvAllRows[i][12] = "Buy";
-            csvAllRows[i][13] = "Stoch Avg";
-            csvAllRows[i][14] = "SMA Gains Avg";
-            csvAllRows[i][15] = "Buys Avg";
-            csvAllRows[i][16] = "Expon Moving Avg";
-            csvAllRows[i][17] = "Triple Expon Smoothed";
-            csvAllRows[i][18] = "Bond Gains";
-	        csvAllRows[i][19] = "Bond Vol";
-            csvAllRows[i][20] = "Bond Expon Avg";
-            csvAllRows[i][21] = "Bond Triple";
-            csvAllRows[i][22] = "Trs Gains";
-	        csvAllRows[i][23] = "Trs Vol";
-            csvAllRows[i][24] = "Trs Expon Avg";
-            csvAllRows[i][25] = "Trs Triple";
+
+            // Initialize all CSV headers
+            let initalCount = 7;
+            columnHeaders.forEach(function(header){
+                csvAllRows[i][initalCount] = header;
+                initalCount++;
+            });
             continue;
         }
 
@@ -316,25 +307,17 @@ function addData(data,res) {
             dataRow = csvAllRows[i];
         } else {
             thereWasABuyOrSell = false;
-            csvAllRows[i][7] = "";
-            csvAllRows[i][8] = "";
-            csvAllRows[i][9] = "";
-            csvAllRows[i][10] = "";
-            csvAllRows[i][11] = "";
-            csvAllRows[i][12] = "0";
-            csvAllRows[i][13] = "";
-            csvAllRows[i][14] = "";
-            csvAllRows[i][15] = "";
-            csvAllRows[i][16] = "";
-            csvAllRows[i][17] = "";
-	        csvAllRows[i][18] = "";
-            csvAllRows[i][19] = "";
-            csvAllRows[i][20] = "";
-            csvAllRows[i][21] = "";
-            csvAllRows[i][22] = "";
-            csvAllRows[i][23] = "";
-            csvAllRows[i][24] = "";
-            csvAllRows[i][25] = "";
+
+            // zero or blank out all row values
+            let blankColumns = 7;
+            columnHeaders.forEach(function(header){
+                if (blankColumns == 12) {
+                    csvAllRows[i][blankColumns] = "0";
+                } else {
+                    csvAllRows[i][blankColumns] = "";
+                }
+                blankColumns++;
+            });
         }
 
         let timestamp = 0;
@@ -349,23 +332,22 @@ function addData(data,res) {
              csvAllRows[i][12] = buyAction;
         }
 
-        let calcMovingAverage = [];
         if (i > 1) {
             let singleDayVolume = ((csvAllRows[i][6] - csvAllRows[i-1][6]) / csvAllRows[i-1][6]);
             let singleDayGains = ((csvAllRows[i][5] - csvAllRows[i-1][5]) / csvAllRows[i-1][5]);
-            let singleDayVolumeBond = ((symbols[0].secondSymbolAllRows[i][6] - symbols[0].secondSymbolAllRows[i-1][6]) / symbols[0].secondSymbolAllRows[i-1][6]);
-            let singleDayGainsBond = ((symbols[0].secondSymbolAllRows[i][5] - symbols[0].secondSymbolAllRows[i-1][5]) / symbols[0].secondSymbolAllRows[i-1][5]);
-            let tltDayVolumeBond = ((symbols[1].secondSymbolAllRows[i][6] - symbols[1].secondSymbolAllRows[i-1][6]) / symbols[1].secondSymbolAllRows[i-1][6]);
-	        let tltDayGainsBond = ((symbols[1].secondSymbolAllRows[i][5] - symbols[1].secondSymbolAllRows[i-1][5]) / symbols[1].secondSymbolAllRows[i-1][5]);
+
+            // dynamically allocate more symbols
+            let y = 0;
+            for(; y < symbols.length;y++) {
+                activeSymbols[y].singleDayVolume.val = ((symbols[y].secondSymbolAllRows[i][6] - symbols[y].secondSymbolAllRows[i-1][6]) / symbols[y].secondSymbolAllRows[i-1][6]);
+                activeSymbols[y].singleDayGains.val = ((symbols[y].secondSymbolAllRows[i][6] - symbols[y].secondSymbolAllRows[i-1][6]) / symbols[y].secondSymbolAllRows[i-1][6]);
+                csvAllRows[i][activeSymbols[y].singleDayGains.index] = activeSymbols[y].singleDayGains.val.toFixed(3);
+                csvAllRows[i][activeSymbols[y].singleDayVolume.index] = activeSymbols[y].singleDayVolume.val.toFixed(3);
+            }
   	    
-	    csvAllRows[i][7] = singleDayGains.toFixed(3); 
+	        csvAllRows[i][7] = singleDayGains.toFixed(3); 
             // Set buy and sell
-	    csvAllRows[i][11] = singleDayVolume.toFixed(3);
-            csvAllRows[i][18] = singleDayGainsBond.toFixed(3);
-            csvAllRows[i][19] = singleDayVolumeBond.toFixed(3);
-           
-            csvAllRows[i][22] = tltDayGainsBond.toFixed(3);
-            csvAllRows[i][23] = tltDayVolumeBond.toFixed(3);
+	        csvAllRows[i][11] = singleDayVolume.toFixed(3);
 
             if (i > 2) {
                 let multiDayGains = ((csvAllRows[i][5] - csvAllRows[i-2][5]) / csvAllRows[i-2][5]);
@@ -422,6 +404,7 @@ function addData(data,res) {
     for (; z < csvAllRows.length; z++) {
 	    if (z >1) {
 
+            // Add more Symbols need to make dynamic
             obvBond.close.push(parseFloat(symbols[0].secondSymbolAllRows[z][4]));
             obvBond.volume.push(parseFloat(symbols[0].secondSymbolAllRows[z][6]));
             
@@ -441,7 +424,8 @@ function addData(data,res) {
     }
 
     console.log("gainsOnly:" + gainsOnly.length);
-
+        
+    //FIXME: Add more Symbols need to make dynamic
     let period = 8;
     let emaValues = EMA.calculate({period : period, values : gainsOnly});
     let obvValues = OBV.calculate(obv);
@@ -475,6 +459,10 @@ function addData(data,res) {
     
     z = 1;
    for (; z < csvAllRows.length;z++) {
+
+
+            //FIXME: Add more Symbols need to make dynamic
+
             csvAllRows[z][20]= bondEmaValues[z].toFixed(3);
             csvAllRows[z][24]= trsEmaValues[z].toFixed(3);
 
@@ -508,16 +496,18 @@ function addData(data,res) {
             }
   }
    x = 0;
+
+   // Format Data for use in CSV
    for (; x < csvAllRows.length; x++) {
-            // Set buy and sell
             
-    convertedRows += csvAllRows[x][0] + "," +  csvAllRows[x][7] + "," + csvAllRows[x][8] + "," + csvAllRows[x][9] + "," 
-      + csvAllRows[x][10] + "," + csvAllRows[x][11] + "," + csvAllRows[x][12] + ","
-      + csvAllRows[x][13] + "," + csvAllRows[x][14] + "," + csvAllRows[x][15] + "," +  csvAllRows[x][16] + ","
-      + csvAllRows[x][17]  + "," + csvAllRows[x][18] + "," +  csvAllRows[x][19] + "," + csvAllRows[x][20] + "," 
-      + csvAllRows[x][21]  + "," + csvAllRows[x][22] + "," + csvAllRows[x][23] + "," + csvAllRows[x][24] + "," 
-      + csvAllRows[x][25] 
-      + "\n";
+        convertedRows += csvAllRows[x][0] + ",";
+        let printCount = 7;
+        columnHeaders.forEach(function(){
+            convertedRows += csvAllRows[x][printCount] + ",";
+            printCount++;
+        });
+        convertedRows += "\n";
+
    }
    // Write Buy Data
    let buyDataCsvOut = "";
