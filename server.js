@@ -20,11 +20,10 @@ app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
 
 const models = [
-    {"type":"buyssells","model":"ml-QdqmZhvuMaI"},
-    {"type":"dumb-test-model","model":"ml-oE6hPHiDUUu"},   
-    {"type":"bond3","model":"ml-Kc8g54IxIQ0"},
-    {"type":"bond2","model":"ml-3p4OwdMnRGb"},
-    {"type":"bond","model":"ml-J7kkZQOKASV"}
+    {"type":"buyssells","model":"ml-Q3gtDAgBPMu"},
+    {"type":"dumb-test-model","model":"ml-F0p499IfShN"},   
+    {"type":"bond3","model":"ml-nrqCxllWh58"},
+    {"type":"bond2","model":"ml-QdqmZhvuMaI"}
 ];
 AWS.config.update(configFile.awsKeys);
 
@@ -65,8 +64,8 @@ let simulationLog = "<ul>";
 let simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
 let tickerStartTime = 1176235388;
 let tickerEndTime = 15341894997;
-let columnHeaders =   ["Gains","Multi Day Gains","SMA Gains","Stoch RSI", "Single Day Volume","Buy","Stoch Avg","SMA Gains Avg","Buys Avg","Expon Moving Avg","Triple Expon Smoothed","Bond Gains","Bond Vol","Bond Expon Avg","Bond Triple",
-"Trs Gains",/*23*/"Trs Vol",/*24*/"Trs Expon Avg",/*25*/"Trs Triple",/*26*/"EUR Gains",/*27*/"EUR Vol",/*28*/"EUR Expon Avg",/*29*/"EUR Triple"];
+let columnHeaders =   ["Gains","Multi Day Gains","SMA Gains","Stoch RSI", "Single Day Volume","Buy","Stoch Avg","SMA Gains Avg","Buys Avg","Expon Moving Avg","Triple Expon Smoothed","Bond Gains","Bond Vol","Bond Expon Avg","Bond Triple","Trs Gains","Trs Vol","Trs Expon Avg","Trs Triple"];
+let exportColumnHeaders =   {"Gains":true,"Multi Day Gains":true,"Stoch RSI":true, "Single Day Volume":true,"Buy":true,"Expon Moving Avg":true,"Triple Expon Smoothed":true,"Bond Vol":true,"Bond Triple":true,"Trs Vol":true,"Trs Expon Avg":true,"Trs Triple":true};
 let symbols = [];
 let activeSymbols = [
     {
@@ -538,7 +537,9 @@ function addData(data,res) {
         convertedRows += csvAllRows[x][0] + ",";
         let printCount = 7;
         columnHeaders.forEach(function(){
-            convertedRows += csvAllRows[x][printCount] + ",";
+            if (exportColumnHeaders[csvAllRows[0][printCount]] || printCount == 12) {
+                convertedRows += csvAllRows[x][printCount] + ",";
+            }  
             printCount++;
         });
         convertedRows += "\n";
