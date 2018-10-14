@@ -65,8 +65,8 @@ let simulationLog = "<ul>";
 let simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
 let tickerStartTime = 1176235388;
 let tickerEndTime = 15341894997;
-let columnHeaders =   ["Gains","Multi Day Gains","SMA Gains","Stoch RSI", "Single Day Volume","Buy","Stoch Avg","SMA Gains Avg","Buys Avg","Expon Moving Avg","Triple Expon Smoothed","Bond Gains","Bond Vol","Bond Expon Avg","Bond Triple",
-"Trs Gains",/*23*/"Trs Vol",/*24*/"Trs Expon Avg",/*25*/"Trs Triple",/*26*/"EUR Gains",/*27*/"EUR Vol",/*28*/"EUR Expon Avg",/*29*/"EUR Triple"];
+let columnHeaders =   ["Gains","Multi Day Gains","SMA Gains","Stoch RSI", "Single Day Volume","Buy","Stoch Avg","SMA Gains Avg","Buys Avg","Expon Moving Avg","Triple Expon Smoothed","Bond Gains","Bond Vol","Bond Expon Avg","Bond Triple","Trs Gains","Trs Vol","Trs Expon Avg","Trs Triple"];
+let exportColumnHeaders =   {"Gains":true,"Multi Day Gains":true,"Stoch RSI":true, "Single Day Volume":true,"Buy":true,"Expon Moving Avg":true,"Triple Expon Smoothed":true,"Bond Vol":true,"Bond Triple":true,"Trs Vol":true,"Trs Expon Avg":true,"Trs Triple":true};
 let symbols = [];
 let activeSymbols = [
     {
@@ -209,9 +209,9 @@ function parseData(res) {
             let max = Math.max.apply(null, last14);
             let min = Math.min.apply(null, last14);
             let stochRSI = (last14[last14.length-1] - min) / (max - min);
-            stockRSIValues.push(stochRSI.toFixed(3));
+            stockRSIValues.push(stochRSI.toFixed(5));
             let roundNumber = Math.round(stochRSI * 10) / 10;
-            sendRsiData.push([csvData[z+14][0],roundNumber]);
+            sendRsiData.push([csvData[z+14][0],stochRSI]);
         }
        
       }
@@ -359,28 +359,28 @@ function addData(data,res) {
             for(; y < symbols.length;y++) {
                 activeSymbols[y].singleDayVolume.val = ((symbols[y].secondSymbolAllRows[i][6] - symbols[y].secondSymbolAllRows[i-1][6]) / symbols[y].secondSymbolAllRows[i-1][6]);
                 activeSymbols[y].singleDayGains.val = ((symbols[y].secondSymbolAllRows[i][5] - symbols[y].secondSymbolAllRows[i-1][5]) / symbols[y].secondSymbolAllRows[i-1][5]);
-                csvAllRows[i][activeSymbols[y].singleDayGains.index] = activeSymbols[y].singleDayGains.val.toFixed(3);
-                csvAllRows[i][activeSymbols[y].singleDayVolume.index] = activeSymbols[y].singleDayVolume.val.toFixed(3);
+                csvAllRows[i][activeSymbols[y].singleDayGains.index] = activeSymbols[y].singleDayGains.val.toFixed(5);
+                csvAllRows[i][activeSymbols[y].singleDayVolume.index] = activeSymbols[y].singleDayVolume.val.toFixed(5);
             }
   	    
-	        csvAllRows[i][7] = singleDayGains.toFixed(3); 
+	        csvAllRows[i][7] = singleDayGains.toFixed(5); 
             // Set buy and sell
-	        csvAllRows[i][11] = singleDayVolume.toFixed(3);
+	        csvAllRows[i][11] = singleDayVolume.toFixed(5);
 
             if (i > 2) {
                 let multiDayGains = ((csvAllRows[i][5] - csvAllRows[i-2][5]) / csvAllRows[i-2][5]);
-                csvAllRows[i][8] = multiDayGains.toFixed(3);
+                csvAllRows[i][8] = multiDayGains.toFixed(5);
                 if (i > 3) {
                     let smaGains = ((parseFloat(csvAllRows[i][7]) + parseFloat(csvAllRows[i-1][7]) +  parseFloat(csvAllRows[i-2][7])) / 3);
-                    csvAllRows[i][9] = smaGains.toFixed(3);
+                    csvAllRows[i][9] = smaGains.toFixed(5);
                 }
     
             }
         }
 
         if (i > 28 && stockRSIValues[i-29]) {
-            let roundNumber = Math.round(stockRSIValues[i-29] * 10) / 10;
-            csvAllRows[i][10] = parseFloat(roundNumber);
+            //let roundNumber = Math.round(stockRSIValues[i-29] * 10) / 10;
+            csvAllRows[i][10] = parseFloat(stockRSIValues[i-29]);
 
             let smaGainAverage = 0;
             let stochRsiAverage = 0;
@@ -402,11 +402,11 @@ function addData(data,res) {
             buyAverage = buyTotal / 6;
 
             let smaGains = ((parseFloat(csvAllRows[i][7]) + parseFloat(csvAllRows[i-1][7]) +  parseFloat(csvAllRows[i-2][7])) / 3);
-            csvAllRows[i][9] = smaGains.toFixed(3);
+            csvAllRows[i][9] = smaGains.toFixed(5);
 
-            csvAllRows[i][13] = stochRsiAverage.toFixed(3);
-            csvAllRows[i][14] = smaGainAverage.toFixed(3);
-            csvAllRows[i][15] = buyAverage.toFixed(3)
+            csvAllRows[i][13] = stochRsiAverage.toFixed(5);
+            csvAllRows[i][14] = smaGainAverage.toFixed(5);
+            csvAllRows[i][15] = buyAverage.toFixed(5)
         }
     }
 
@@ -493,23 +493,23 @@ function addData(data,res) {
 
             //FIXME: Add more Symbols need to make dynamic
 
-            csvAllRows[z][20]= bondEmaValues[z].toFixed(3);
-            csvAllRows[z][24]= trsEmaValues[z].toFixed(3);
-            csvAllRows[z][28]= eurEmaValues[z].toFixed(3);
+            csvAllRows[z][20]= bondEmaValues[z].toFixed(5);
+            csvAllRows[z][24]= trsEmaValues[z].toFixed(5);
+            csvAllRows[z][28]= eurEmaValues[z].toFixed(5);
 
 
-            csvAllRows[z][16] = emaValues[z].toFixed(3);
+            csvAllRows[z][16] = emaValues[z].toFixed(5);
             let tripleSmoothed = (parseFloat(obvValues[z] - obvValues[z-1]) / obvValues[z-1]);
-            csvAllRows[z][17] = tripleSmoothed.toFixed(3);
+            csvAllRows[z][17] = tripleSmoothed.toFixed(5);
            
             let tripleSmoothedBond = (parseFloat(bondObvValues[z] - bondObvValues[z-1]) / bondObvValues[z-1]);
-            csvAllRows[z][21] = tripleSmoothedBond.toFixed(3);  
+            csvAllRows[z][21] = tripleSmoothedBond.toFixed(5);  
 
             let tripleSmoothedTrs = (parseFloat(trsObvValues[z] - trsObvValues[z-1]) / trsObvValues[z-1]);
-            csvAllRows[z][25] = tripleSmoothedTrs.toFixed(3);       
+            csvAllRows[z][25] = tripleSmoothedTrs.toFixed(5);       
 
             let tripleSmoothedEur = (parseFloat(eurObvValues[z] - eurObvValues[z-1]) / eurObvValues[z-1]);
-            csvAllRows[z][29] = tripleSmoothedEur.toFixed(3);   
+            csvAllRows[z][29] = tripleSmoothedEur.toFixed(5);   
     }
 
     let convertedRows = "";
@@ -537,8 +537,10 @@ function addData(data,res) {
             
         convertedRows += csvAllRows[x][0] + ",";
         let printCount = 7;
-        columnHeaders.forEach(function(){
-            convertedRows += csvAllRows[x][printCount] + ",";
+        columnHeaders.forEach(function(column) {
+            if (exportColumnHeaders[csvAllRows[0][printCount]] || printCount == 12) {
+                convertedRows += csvAllRows[x][printCount] + ",";
+            }  
             printCount++;
         });
         convertedRows += "\n";
@@ -957,9 +959,9 @@ function mlPredictAmazon(resolve,params) {
         if (err) {
             console.log(err, err.stack);
         } else {     
-            obj.buy = data["Prediction"]["predictedScores"][1].toFixed(3);
+            obj.buy = data["Prediction"]["predictedScores"][1].toFixed(5);
             if (data["Prediction"]["predictedScores"][-1]) {
-                obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(3);
+                obj.sell = data["Prediction"]["predictedScores"][-1].toFixed(5);
             }
             obj.hold = 0; 
             obj.type = params.MLModelId;
