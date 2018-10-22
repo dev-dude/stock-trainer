@@ -13,11 +13,13 @@ const OBV = require('technicalindicators').OBV;
 const AWS = require('aws-sdk');
 const basicAuth = require('basic-auth-connect');
 
+const compression = require('compression');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use(basicAuth('stock', 'chart'));
+app.use(compression());
 
 const models = [
     {"type":"buyssells","model":"ml-Q3gtDAgBPMu"},
