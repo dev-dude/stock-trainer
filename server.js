@@ -64,8 +64,9 @@ let simulationLog = "<ul>";
 let simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
 let tickerStartTime = 1176235388;
 let tickerEndTime = 15341894997;
-let columnHeaders =   ["Gains","Multi Day Gains","SMA Gains","Stoch RSI", "Single Day Volume","Buy","Stoch Avg","SMA Gains Avg","Buys Avg","Expon Moving Avg","Triple Expon Smoothed","Bond Gains","Bond Vol","Bond Expon Avg","Bond Triple","Trs Gains","Trs Vol","Trs Expon Avg","Trs Triple"];
-let exportColumnHeaders =   {"Gains":true,"Multi Day Gains":true,"Stoch RSI":true, "Single Day Volume":true,"Buy":true,"Expon Moving Avg":true,"Triple Expon Smoothed":true,"Bond Vol":true,"Bond Triple":true,"Trs Vol":true,"Trs Expon Avg":true,"Trs Triple":true};
+
+let columnHeaders =   ["Gains","Multi Day Gains","SMA Gains","Stoch RSI", "Single Day Volume","Buy","Stoch Avg","SMA Gains Avg","Buys Avg","Expon Moving Avg","Triple Expon Smoothed","Bond Gains","Bond Vol","Bond Expon Avg","Bond Triple","Trs Gains","Trs Vol","Trs Expon Avg","Trs Triple","EUR Gains","EUR Vol","EUR Expon Avg","EUR Triple"];
+let exportColumnHeaders =   {"Gains":true,"Multi Day Gains":true,"Stoch RSI":true, "Single Day Volume":true,"Buy":true,"Expon Moving Avg":true,"Triple Expon Smoothed":true,"Bond Vol":true,"Bond Triple":true,"Trs Vol":true,"Trs Expon Avg":true,"Trs Triple":true,"EUR Gains":true,"EUR Vol":true,"EUR Expon Avg":true,"EUR Triple":true};
 let symbols = [];
 let activeSymbols = [
     {
@@ -79,7 +80,7 @@ let activeSymbols = [
         "singleDayGains":{"val":0,"index":22}
     },
     {
-        "label":"FXE",
+        "label":"XLF",
         "singleDayVolume":{"val":0,"index":27},
         "singleDayGains":{"val":0,"index":26}
     }
@@ -224,7 +225,7 @@ function parseData(res) {
             parseDataPromise(resolve,"UUP",1);
          });
          let p3 = new Promise(function(resolve, reject) {
-            parseDataPromise(resolve,"FXE",2);
+            parseDataPromise(resolve,"XLF",2);
          });
         Promise.all([p,p2,p3]).then(function() {
             intialRun = false;
@@ -266,8 +267,8 @@ function downloadCsv(response,type) {
                 console.log("parsing UUP");
                 downloadCsv(response,"UUP");
             } else if (type == "UUP") {
-                console.log("parsing FXE");
-                downloadCsv(response,"FXE");
+                console.log("parsing XLF");
+                downloadCsv(response,"XLF");
               } else {
                 console.log("processing data");
  		        parseBuyAndSellData(response);
