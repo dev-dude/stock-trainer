@@ -22,6 +22,8 @@ app.use(basicAuth('stock', 'chart'));
 app.use(compression());
 
 const models = [
+    {"type":"buyssells","model":"ml-M9qXSuIXTL1"},
+    {"type":"buyssells","model":"ml-cb5e1PNTZVI"},
     {"type":"buyssells","model":"ml-Q3gtDAgBPMu"},
     {"type":"dumb-test-model","model":"ml-F0p499IfShN"},   
     {"type":"bond3","model":"ml-nrqCxllWh58"},
