@@ -3,6 +3,7 @@ const app = express()
 const configFile = require('./configFile.json')
 const moment = require('moment');
 
+
 const fs = require('fs');
 const request = require('request');
 const parse = require('csv-parse');
@@ -22,6 +23,7 @@ app.use(basicAuth('stock', 'chart'));
 app.use(compression());
 
 const models = [
+    {"type":"local","model":"local"},
     {"type":"buyssells","model":"ml-M9qXSuIXTL1"},
     {"type":"buyssells","model":"ml-cb5e1PNTZVI"},
     {"type":"buyssells","model":"ml-Q3gtDAgBPMu"},
@@ -768,7 +770,6 @@ function backTest(res) {
 }
 
 
-
 function mlPredict(resolve,lastRow,backTest,activeTrade) {
     if (
         !backTest && mlPredictCounter < models.length || 
@@ -817,34 +818,41 @@ function mlPredict(resolve,lastRow,backTest,activeTrade) {
             PredictEndpoint: 'https://realtime.machinelearning.us-east-1.amazonaws.com',
             Record: {
                 "Gains": gains,
-                "Multi Day Gains": multiDayGains,
-                "SMA Gains": smaGains,
+                "Multi Day Gains": multiDayGains,           
                 "Stoch RSI": stochRsi,
                 "Single Day Volume": volume,
-                "Stoch Avg": stochAverage,
-                "SMA Gains Avg": smaGainAverage,
-                "Buys Avg": buysAverage,
                 "Expon Moving Avg": exponAvg,
                 "Triple Expon Smoothed": tripleExponSmooth,
-                "Bond Gains": lastRow[18].toString(),
                 "Bond Vol":lastRow[19].toString(),
- 		        "Bond Expon Avg":lastRow[20].toString(),
                 "Bond Triple":lastRow[21].toString(),
-                "Trs Gains":lastRow[22].toString(),
                 "Trs Vol":lastRow[23].toString(),
                 "Trs Expon Avg":lastRow[24].toString(),
                 "Trs Triple":lastRow[25].toString(),
                 "EUR Gains":lastRow[26].toString(),
                 "EUR Vol":lastRow[27].toString(),
                 "EUR Expon Avg":lastRow[28].toString(),
-                "EUR Triple":lastRow[29].toString()
+                "EUR Triple":lastRow[29].toString(),
+
+                "Bond Expon Avg":lastRow[20].toString(),
+                "Trs Gains":lastRow[22].toString(),
+                "SMA Gains": smaGains,
+                "Stoch Avg": stochAverage,
+                "SMA Gains Avg": smaGainAverage,
+                "Buys Avg": buysAverage,
+                "Bond Gains": lastRow[18].toString()
             }
         };
       
-        
+    
         let p1 = new Promise(function(resolve, reject) {
-            mlPredictAmazon(resolve,params);
- 	  });
+            console.log("model type " + activeModel.type);
+            if (activeModel.type == "local") {
+                mlPredictLocal(resolve,params);
+            } else {
+                mlPredictAmazon(resolve,params);
+            }
+               
+        });
 
         let p2 = new Promise(function(resolve, reject) {
             if (secondModelEnabled) {
@@ -972,6 +980,34 @@ function mlPredictAmazon(resolve,params) {
         }
         resolve(obj)
     });
+}
+
+function mlPredictLocal(resolve,params) {
+    let obj = {}; 
+    let requestBody = Object.values(params.Record);
+    console.log(requestBody);
+    request.post({
+        method:'POST',
+        headers: { 
+            'Content-Type' : 'application/json' 
+         },
+        uri:'http://127.0.0.1:5002/predict',
+        json:requestBody.slice(0,15)},
+        function (error, response, body) {
+            if (!error && response.statusCode == 200) {
+                if (body.prediction == 1) {
+                    obj.buy = 1;
+                    obj.sell = 0;
+                } else {
+                    obj.sell = 1;
+                    obj.buy = 0;
+                }
+                obj.hold = 0;
+                obj.type = "local"
+            }
+            resolve(obj)
+        }
+    );
 }
 
 app.get('/download/:editing', function(req, res) {
