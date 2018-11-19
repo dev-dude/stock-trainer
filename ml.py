@@ -2,26 +2,30 @@ import numpy
 import pandas
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.layers import Dropout
-from keras.layers import LSTM
 from keras.wrappers.scikit_learn import KerasClassifier
 from keras.utils import np_utils
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import KFold
-from sklearn.preprocessing import LabelEncoder
-from sklearn.pipeline import Pipeline
+from keras.optimizers import SGD
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import jaccard_similarity_score
 from flask import Flask, request
 from flask_restful import Resource, Api
-from json import dumps
+from sklearn.preprocessing import LabelEncoder
 from flask.json import jsonify
+
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import KFold
+from sklearn.pipeline import Pipeline
+from keras.layers import Dropout
+from keras.layers import LSTM
+from json import dumps
+from keras.activations import relu
+
 
 app = Flask(__name__)
 api = Api(app)
 
 
+sgd = SGD(lr=0.006, decay=0, momentum=.6, nesterov=True)
 
 # fix random seed for reproducibility
 # define baseline model
@@ -31,11 +35,11 @@ def baseline_model():
 	model = Sequential()
 	model.add(Dense(30, input_dim=15, init='normal', activation='relu'))
 	# model.add(Dropout(10))
-	model.add(Dense(2, init='normal', activation='softmax'))
+	model.add(Dense(2, init='normal', activation='hard_sigmoid'))
 
 	# Compile model
 	# Create model
-	model.compile(loss='mean_squared_error', optimizer='sgd', metrics=[])
+	model.compile(loss='logcosh', optimizer=sgd, metrics=[])
 	return model
 
 
@@ -67,8 +71,8 @@ results = cross_val_score(estimator, X, dummy_y, cv=kfold)
 print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
 '''
 
-estimator = KerasClassifier(build_fn=baseline_model, epochs=10, batch_size=2000, verbose=1)
-X_train, X_test, Y_train, Y_test = train_test_split(X, dummy_y, test_size=0.5, random_state=seed)
+estimator = KerasClassifier(build_fn=baseline_model, epochs=5, batch_size=2050, verbose=1)
+X_train, X_test, Y_train, Y_test = train_test_split(X, dummy_y, test_size=0.4, random_state=seed)
 estimator.fit(X_train, Y_train)
 
 totalDiff = 0

@@ -606,62 +606,80 @@ function addData(data,res) {
     });
 }
 
-function portfolioSimulation(res,startDate,endDate) {
-    let test = true;
-    let custom = false;
-    let activeDataObj = csvAllRows;
-    if (custom) { 
-       activeDataObj = customRows;	   
-    } 
-    simulationLog = "<ul>";
-    simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
-    if (false) {
-        csvRowsCopySimulation = activeDataObj.slice(activeDataObj.length - 200,activeDataObj.length - 100);
-    } else {
-        let i = 0;
-        let startIndex = 0;
-        let endIndex = 0;
-        for (; i < activeDataObj.length;i++) {
-            if (activeDataObj[i][0] == startDate) {
-                startIndex = i;
-            }  else if (activeDataObj[i][0] == endDate) {
-                endIndex = i;
-            }
+function portfolioSimulation(res,startDate,endDate,multiple) {
+    let mainPromise = new Promise(function(resolveIt, reject) {
+        if (multiple) {
+            startSimulation = true;
+            shortPrice = 0;
+            testPortfolio = 10000;  
+            console.log("selected model:" + models[0].model);
+            desiredBackTestModel = 0;
         }
-      
-        console.log("start index: " + startIndex  +  " end index: " + endIndex);
-        csvRowsCopySimulation = activeDataObj.slice(startIndex,endIndex);
-    	console.log("last obj " + activeDataObj[endIndex][0]);
-	console.log("simulation length " + csvRowsCopySimulation.length);
-    }
- console.log("testPortfolio " + testPortfolio + " short " + shortPrice);
-    let p = new Promise(function(resolve, reject) {
-        mlPredictCounter = 0;
-        totalPredictions = [];
-        mlPredict(resolve,null,false,true);
-    });
-    p.then(function(){
 
+        console.log("start " + startDate + " end " + endDate);
 
-        if (lastActiveTrade == "1") {
-            console.log("testPortfolio before sell " + testPortfolio);
-            console.log("shares purchased" + sharesPurchased);
-            console.log("share price " + csvRowsCopySimulation[mlPredictCounter][4]);
-            testPortfolio += csvRowsCopySimulation[mlPredictCounter][4] * sharesPurchased;
-            console.log("testPortfolio after sell " + testPortfolio);
+        let test = true;
+        let custom = false;
+        let activeDataObj = csvAllRows;
+        if (custom) { 
+        activeDataObj = customRows;	   
+        } 
+        simulationLog = "<ul>";
+        simulationLogCsv = "type,shares,test portfolio,time,total amount bought,share price\n";
+        if (false) {
+            csvRowsCopySimulation = activeDataObj.slice(activeDataObj.length - 200,activeDataObj.length - 100);
         } else {
-            console.log("testPortfolio " + testPortfolio);
-        
-        }
-        fs.writeFile('public/output.csv', simulationLogCsv, 'utf8', function (err) {
-            if (err) {
-                console.log(err);
-                console.log('Some error occured - file either not saved or corrupted file saved.');
+            let i = 0;
+            let startIndex = 0;
+            let endIndex = 0;
+            for (; i < activeDataObj.length;i++) {
+                if (activeDataObj[i][0] == startDate) {
+                    startIndex = i;
+                }  else if (activeDataObj[i][0] == endDate) {
+                    endIndex = i;
+                }
             }
+        
+            console.log("start index: " + startIndex  +  " end index: " + endIndex);
+            csvRowsCopySimulation = activeDataObj.slice(startIndex,endIndex);
+            console.log("last obj " + activeDataObj[endIndex][0]);
+            console.log("simulation length " + csvRowsCopySimulation.length);
+        }
+        console.log("testPortfolio " + testPortfolio + " short " + shortPrice);
+        let p = new Promise(function(resolve, reject) {
+            mlPredictCounter = 0;
+            totalPredictions = [];
+            mlPredict(resolve,null,false,true);
         });
-        res.send({"status":"success", "portfolio":testPortfolio,"log":simulationLog,simulationLogCsv:simulationLogCsv});
-       
+        p.then(function(){
+            
+            if (lastActiveTrade == "1") {
+                console.log("testPortfolio before sell " + testPortfolio);
+                console.log("shares purchased" + sharesPurchased);
+                console.log("share price " + csvRowsCopySimulation[mlPredictCounter][4]);
+                testPortfolio += csvRowsCopySimulation[mlPredictCounter][4] * sharesPurchased;
+                console.log("testPortfolio after sell " + testPortfolio);
+            } else {
+                console.log("testPortfolio " + testPortfolio);
+            
+            }
+            fs.writeFile('public/output.csv', simulationLogCsv, 'utf8', function (err) {
+                if (err) {
+                    console.log(err);
+                    console.log('Some error occured - file either not saved or corrupted file saved.');
+                }
+            });
+
+            if (multiple) {
+                console.log("promise resolved");
+                resolveIt();
+            } else {
+                res.send({"status":"success", "portfolio":testPortfolio,"log":simulationLog,simulationLogCsv:simulationLogCsv});
+            }
+        
+        });
     });
+    return mainPromise;
 }
 
 function checkBuySellData(res) {
@@ -985,7 +1003,6 @@ function mlPredictAmazon(resolve,params) {
 function mlPredictLocal(resolve,params) {
     let obj = {}; 
     let requestBody = Object.values(params.Record);
-    console.log(requestBody);
     request.post({
         method:'POST',
         headers: { 
@@ -1054,9 +1071,39 @@ app.get('/test/simulate/:startDate/:endDate/:model', function(req, res) {
 	portfolioSimulation(res,req.param("startDate"),req.param("endDate"));
 });
 
+const average = arr => arr.reduce((sume, el) => sume + el, 0) / arr.length;
+
+
+app.get('/test/simulateMultiplePoints/', function(req, res) {
+
+    console.log("selected model:" + models[0].model);
+    desiredBackTestModel = 0;
+    let testPortfolioArr = [];
+    // Awful fix this
+    portfolioSimulation(res,"2018-10-01","2018-11-16",true)
+    .then(function(port) {
+        testPortfolioArr.push(testPortfolio);
+        portfolioSimulation(res,"2018-10-29","2018-11-16",true)
+        .then(function(port) {
+            testPortfolioArr.push(testPortfolio);
+            portfolioSimulation(res,"2018-06-27","2018-09-20",true).then(function(port){
+                testPortfolioArr.push(testPortfolio);
+                portfolioSimulation(res,"2018-04-06","2018-11-12",true).then(function(port){
+                    testPortfolioArr.push(testPortfolio);
+                    console.log("final");
+                    console.log(testPortfolioArr);
+                    console.log(average(testPortfolioArr));
+                    res.send({"avg":average(testPortfolioArr)});    
+                })
+            })
+        });
+    });
+
+});
+
+
 app.get('/test/checkBuySellData', function(req, res) {
     checkBuySellData(res);
 });
-
 
 app.listen(8080, () => console.log('Example app listening on port 8080!'))
